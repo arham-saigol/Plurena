@@ -95,6 +95,7 @@ export default defineSchema({
 
   uploadGrants: defineTable({
     userId: v.id("users"),
+    storageId: v.optional(v.id("_storage")),
     status: v.union(v.literal("issued"), v.literal("registered")),
     createdAt: v.number(),
     registeredAt: v.optional(v.number()),

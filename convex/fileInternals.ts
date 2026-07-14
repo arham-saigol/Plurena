@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 const MAX_UPLOADS_PER_HOUR = 20;
 const MAX_STORED_ASSETS = 100;
@@ -35,9 +35,12 @@ export const finalizeUpload = internalMutation({
     const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId)).unique();
     if (!user) throw new Error("USER_NOT_INITIALIZED");
     const grant = await ctx.db.get(args.uploadGrantId);
-    if (!grant || grant.userId !== user._id || grant.status !== "issued") throw new Error("INVALID_UPLOAD_GRANT");
+    if (!grant || grant.userId !== user._id || grant.status !== "issued" || (grant.storageId && grant.storageId !== args.storageId)) {
+      throw new Error("INVALID_UPLOAD_GRANT");
+    }
     const assets = await ctx.db.query("assets").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_STORED_ASSETS);
     if (assets.length >= MAX_STORED_ASSETS) throw new Error("ASSET_LIMIT_REACHED");
+    await ctx.db.patch(grant._id, { storageId: args.storageId });
     const assetId = await ctx.db.insert("assets", {
       userId: user._id,
       storageId: args.storageId,
@@ -48,6 +51,20 @@ export const finalizeUpload = internalMutation({
     });
     await ctx.db.patch(grant._id, { status: "registered", registeredAt: Date.now() });
     return assetId;
+  },
+});
+
+export const canDeleteFailedUpload = internalQuery({
+  args: {
+    clerkId: v.string(),
+    uploadGrantId: v.id("uploadGrants"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId)).unique();
+    if (!user) return false;
+    const grant = await ctx.db.get(args.uploadGrantId);
+    return grant?.userId === user._id && grant.status === "issued" && grant.storageId === args.storageId;
   },
 });
 

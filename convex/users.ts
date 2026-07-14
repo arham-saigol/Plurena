@@ -178,10 +178,18 @@ export const continueAccountDeletion = internalMutation({
         return { complete: false };
       }
       for (const option of await ctx.db.query("options").withIndex("by_test", (q) => q.eq("testId", test._id)).take(10)) await ctx.db.delete(option._id);
-      const aggregate = await ctx.db.query("aggregates").withIndex("by_test", (q) => q.eq("testId", test._id)).unique();
-      if (aggregate) await ctx.db.delete(aggregate._id);
-      const synthesis = await ctx.db.query("syntheses").withIndex("by_test", (q) => q.eq("testId", test._id)).unique();
-      if (synthesis) await ctx.db.delete(synthesis._id);
+      const aggregates = await ctx.db.query("aggregates").withIndex("by_test", (q) => q.eq("testId", test._id)).take(DELETION_BATCH_SIZE);
+      if (aggregates.length) {
+        for (const aggregate of aggregates) await ctx.db.delete(aggregate._id);
+        await scheduleDeletionContinuation(ctx, request._id);
+        return { complete: false };
+      }
+      const syntheses = await ctx.db.query("syntheses").withIndex("by_test", (q) => q.eq("testId", test._id)).take(DELETION_BATCH_SIZE);
+      if (syntheses.length) {
+        for (const synthesis of syntheses) await ctx.db.delete(synthesis._id);
+        await scheduleDeletionContinuation(ctx, request._id);
+        return { complete: false };
+      }
       await ctx.db.delete(test._id);
       await scheduleDeletionContinuation(ctx, request._id);
       return { complete: false };

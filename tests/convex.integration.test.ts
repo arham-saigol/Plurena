@@ -64,9 +64,11 @@ describe("Convex transaction boundaries", () => {
     expect(result.asset?.contentType).toBe("image/png");
     expect(result.grants).toHaveLength(1);
     expect(result.grants[0].status).toBe("registered");
+    expect(result.grants[0].storageId).toBe(storageId);
     const invalidGrant = await user.mutation(api.files.generateUploadUrl, {});
     const invalidStorageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([new Uint8Array([1])], { type: "image/svg+xml" })));
     await expect(user.action(api.files.finalizeImage, { storageId: invalidStorageId, uploadGrantId: invalidGrant.uploadGrantId })).rejects.toThrow("UNSUPPORTED_IMAGE_TYPE");
+    await expect(t.run(async (ctx) => (await ctx.storage.get(invalidStorageId)) !== null)).resolves.toBe(true);
   });
 
   it("creates the full 250-person panel within transaction limits", async () => {
@@ -271,7 +273,7 @@ describe("Convex transaction boundaries", () => {
     const userId = await owner.mutation(api.users.ensureCurrent, {});
     const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: "image/png" })));
     await t.run(async (ctx) => {
-      const grantId = await ctx.db.insert("uploadGrants", { userId, status: "registered", createdAt: Date.now(), registeredAt: Date.now() });
+      const grantId = await ctx.db.insert("uploadGrants", { userId, storageId, status: "registered", createdAt: Date.now(), registeredAt: Date.now() });
       await ctx.db.insert("assets", { userId, storageId, uploadGrantId: grantId, contentType: "image/png", size: 8, createdAt: Date.now() });
       await ctx.db.insert("savedAudiences", { userId, name: "Private audience", criteria: { locations: ["US"], description: "Private research audience", gender: "mixed", minAge: 20, maxAge: 40 }, createdAt: Date.now(), updatedAt: Date.now() });
       await ctx.db.insert("onboardingAnswers", { userId, goals: ["validate-ideas"], integrationPlans: ["manual"], submittedAt: Date.now() });
@@ -289,6 +291,8 @@ describe("Convex transaction boundaries", () => {
       await ctx.db.insert("modelAttempts", { testId, assignmentId, provider: "test", model: "test", attempt: 1, status: "succeeded", createdAt: Date.now() });
       await ctx.db.insert("synthesisAttempts", { testId, provider: "test", model: "test", attempt: 1, status: "succeeded", latencyMs: 1, createdAt: Date.now() });
       await ctx.db.insert("aggregates", { testId, userId, kind: "open_ended", data: {}, responseCount: 1, generatedAt: Date.now() });
+      await ctx.db.insert("aggregates", { testId, userId, kind: "open_ended", data: {}, responseCount: 1, generatedAt: Date.now() });
+      await ctx.db.insert("syntheses", { testId, userId, summary: "Private summary", patterns: [], disagreements: [], nextActions: [], directness: 5, rhythm: 5, trust: 5, authenticity: 5, density: 5, provider: "test", model: "test", createdAt: Date.now() });
       await ctx.db.insert("syntheses", { testId, userId, summary: "Private summary", patterns: [], disagreements: [], nextActions: [], directness: 5, rhythm: 5, trust: 5, authenticity: 5, density: 5, provider: "test", model: "test", createdAt: Date.now() });
     });
     await t.mutation(api.users.requestAccountDeletion, { forwardSecret: "test-clerk-forward-secret", clerkId: "delete-owner" });
@@ -299,13 +303,42 @@ describe("Convex transaction boundaries", () => {
     }
     const remaining = await t.run(async (ctx) => ({
       user: await ctx.db.get(userId),
+      uploadGrants: await ctx.db.query("uploadGrants").collect(),
+      audiences: await ctx.db.query("savedAudiences").collect(),
+      onboardingAnswers: await ctx.db.query("onboardingAnswers").collect(),
+      ledger: await ctx.db.query("creditLedger").collect(),
+      payments: await ctx.db.query("payments").collect(),
       tests: await ctx.db.query("tests").collect(),
+      options: await ctx.db.query("options").collect(),
+      personas: await ctx.db.query("personas").collect(),
+      assignments: await ctx.db.query("assignments").collect(),
       responses: await ctx.db.query("responses").collect(),
       attempts: await ctx.db.query("modelAttempts").collect(),
+      synthesisAttempts: await ctx.db.query("synthesisAttempts").collect(),
+      aggregates: await ctx.db.query("aggregates").collect(),
+      syntheses: await ctx.db.query("syntheses").collect(),
       assets: await ctx.db.query("assets").collect(),
       file: await ctx.storage.get(storageId),
     }));
-    expect(remaining).toMatchObject({ user: null, tests: [], responses: [], attempts: [], assets: [], file: null });
+    expect(remaining).toMatchObject({
+      user: null,
+      uploadGrants: [],
+      audiences: [],
+      onboardingAnswers: [],
+      ledger: [],
+      payments: [],
+      tests: [],
+      options: [],
+      personas: [],
+      assignments: [],
+      responses: [],
+      attempts: [],
+      synthesisAttempts: [],
+      aggregates: [],
+      syntheses: [],
+      assets: [],
+      file: null,
+    });
     await expect(t.mutation(api.users.requestAccountDeletion, { forwardSecret: "test-clerk-forward-secret", clerkId: "delete-owner" })).resolves.toEqual({ status: "complete" });
   });
 });

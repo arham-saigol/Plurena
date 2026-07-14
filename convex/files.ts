@@ -36,7 +36,12 @@ export const finalizeImage = action({
         size: blob.size,
       });
     } catch (error) {
-      await ctx.storage.delete(args.storageId);
+      const canDelete = await ctx.runQuery(internal.fileInternals.canDeleteFailedUpload, {
+        clerkId: identity.subject,
+        uploadGrantId: args.uploadGrantId,
+        storageId: args.storageId,
+      });
+      if (canDelete) await ctx.storage.delete(args.storageId);
       throw error;
     }
   },
