@@ -16,8 +16,9 @@ export function useDialogA11y(onClose?: () => void) {
     first?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && closeRef.current) { event.preventDefault(); closeRef.current(); return; }
-      if (event.key !== "Tab" || !dialog) return;
-      const focusable = [...dialog.querySelectorAll<HTMLElement>(focusableSelector)].filter((element) => element.offsetParent !== null);
+      const currentDialog = dialogRef.current;
+      if (event.key !== "Tab" || !currentDialog) return;
+      const focusable = [...currentDialog.querySelectorAll<HTMLElement>(focusableSelector)].filter((element) => element.offsetParent !== null);
       if (!focusable.length) return;
       const firstItem = focusable[0];
       const lastItem = focusable[focusable.length - 1];

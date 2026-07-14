@@ -1,8 +1,11 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
 const MAX_UPLOADS_PER_HOUR = 20;
 const MAX_STORED_ASSETS = 100;
+const ORPHANED_STORAGE_GRACE_MS = 24 * 60 * 60 * 1_000;
+const CLEANUP_BATCH_SIZE = 50;
 
 export const beginUpload = internalMutation({
   args: { clerkId: v.string() },
@@ -43,5 +46,31 @@ export const finalizeUpload = internalMutation({
     });
     await ctx.db.patch(grant._id, { status: "registered", registeredAt: Date.now() });
     return assetId;
+  },
+});
+
+export const cleanupOrphanedStorage = internalMutation({
+  args: { cursor: v.optional(v.string()), cutoff: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<{ scanned: number; deleted: number; continued: boolean }> => {
+    const cutoff = args.cutoff ?? Date.now() - ORPHANED_STORAGE_GRACE_MS;
+    const page = await ctx.db.system
+      .query("_storage")
+      .withIndex("by_creation_time", (q) => q.lt("_creationTime", cutoff))
+      .paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_BATCH_SIZE });
+    let deleted = 0;
+    for (const file of page.page) {
+      const asset = await ctx.db.query("assets").withIndex("by_storage", (q) => q.eq("storageId", file._id)).unique();
+      if (!asset) {
+        await ctx.storage.delete(file._id);
+        deleted += 1;
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.fileInternals.cleanupOrphanedStorage, {
+        cursor: page.continueCursor,
+        cutoff,
+      });
+    }
+    return { scanned: page.page.length, deleted, continued: !page.isDone };
   },
 });

@@ -60,10 +60,16 @@ describe("critical UI states", () => {
   });
 
   it("announces export failures", async () => {
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockRejectedValue(new Error("Clipboard permission denied")) } });
-    render(<TestDetails testId="test-1" />);
-    fireEvent.click(screen.getByRole("button", { name: /Copy as Markdown/ }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Clipboard permission denied");
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    try {
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockRejectedValue(new Error("Clipboard permission denied")) } });
+      render(<TestDetails testId="test-1" />);
+      fireEvent.click(screen.getByRole("button", { name: /Copy as Markdown/ }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Clipboard permission denied");
+    } finally {
+      if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+      else delete (navigator as { clipboard?: Clipboard }).clipboard;
+    }
   });
 
   it("distinguishes a filtered empty result from an empty account", async () => {

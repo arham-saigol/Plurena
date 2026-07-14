@@ -17,7 +17,7 @@ export const createIntent = mutation({
       if (existing.status !== "pending") throw new Error("PAYMENT_ALREADY_TERMINAL");
       return existing;
     }
-    const recent = await ctx.db.query("payments").withIndex("by_user_created", (q: any) =>
+    const recent = await ctx.db.query("payments").withIndex("by_user_created", (q) =>
       q.eq("userId", user._id).gte("createdAt", Date.now() - 60 * 60 * 1_000),
     ).take(10);
     if (recent.length >= 10) throw new Error("CHECKOUT_RATE_LIMIT");
@@ -100,7 +100,7 @@ export const applyWebhook = mutation({
     const user = await ctx.db.get(payment.userId);
     if (!user) throw new Error("USER_NOT_FOUND");
     const ledgerKey = `creem:${args.checkoutId}`;
-    const ledger = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q: any) =>
+    const ledger = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q) =>
       q.eq("userId", user._id).eq("idempotencyKey", ledgerKey),
     ).unique();
     if (ledger) return { duplicate: true };

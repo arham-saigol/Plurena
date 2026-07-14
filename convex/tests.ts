@@ -4,19 +4,10 @@ import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { requireOwned, requireUser } from "./lib/auth";
 import { modelForAssignment } from "./lib/modelRegistry";
-import { generatePanel, shuffleForRespondent } from "./lib/panel";
+import { audienceValidator, generatePanel, shuffleForRespondent } from "./lib/panel";
 import { quotePanel } from "./lib/pricing";
 import { stableFingerprint } from "./lib/idempotency";
 import { applyCreditEntry } from "./lib/credits";
-
-const audienceValidator = v.object({
-  name: v.optional(v.string()),
-  locations: v.array(v.string()),
-  description: v.string(),
-  gender: v.union(v.literal("female"), v.literal("mixed"), v.literal("male")),
-  minAge: v.number(),
-  maxAge: v.number(),
-});
 
 const optionValidator = v.object({
   label: v.string(),
@@ -97,7 +88,7 @@ export const launch = mutation({
       completedCount: 0,
       failedCount: 0,
       rerunOf: args.rerunOf,
-      reusedPanel: Boolean(args.reusePanel),
+      reusedPanel: Boolean(args.rerunOf && args.reusePanel),
       launchedAt: now,
     });
 

@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { Check, Gift } from "@phosphor-icons/react";
 import { useDialogA11y } from "@/lib/use-dialog-a11y";
 
@@ -26,7 +26,9 @@ export function OnboardingDialog() {
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const toggle = (value: string, current: string[], set: (next: string[]) => void) => set(current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+  const toggle = (value: string, set: Dispatch<SetStateAction<string[]>>) => set((current) =>
+    current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+  );
   const submit = async () => {
     if (!selectedGoals.length || !selectedPlans.length) { setError("Choose at least one answer for each question."); return; }
     setBusy(true); setError("");
@@ -34,8 +36,8 @@ export function OnboardingDialog() {
   };
   return <div className="dialog-backdrop onboarding-backdrop"><section ref={dialogRef} className="dialog onboarding-dialog" role="dialog" aria-modal="true" aria-label="Claim onboarding credit">
     <div className="gift-mark"><Gift size={20} weight="fill" /></div><p className="eyebrow">$6 welcome credit</p><h2>Tell us how you plan to use Plurena.</h2><p className="muted">Answer both questions to claim enough credit for your first 20-person test.</p>
-    <Question title="What are you hoping to do?" items={goals} selected={selectedGoals} onToggle={(value) => toggle(value, selectedGoals, setSelectedGoals)} />
-    <Question title="How do you expect to use the results?" items={plans} selected={selectedPlans} onToggle={(value) => toggle(value, selectedPlans, setSelectedPlans)} />
+    <Question title="What are you hoping to do?" items={goals} selected={selectedGoals} onToggle={(value) => toggle(value, setSelectedGoals)} />
+    <Question title="How do you expect to use the results?" items={plans} selected={selectedPlans} onToggle={(value) => toggle(value, setSelectedPlans)} />
     {error && <p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={busy} onClick={submit}>{busy ? "Saving…" : "Claim $6 credit"}</button>
     <p className="fine-print">Plurena awards this credit once per account.</p>
   </section></div>;

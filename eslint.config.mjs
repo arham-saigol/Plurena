@@ -8,6 +8,11 @@ export default defineConfig([
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    files: ["components/app-header.tsx"],
+    rules: {
       "react-hooks/set-state-in-effect": "off",
       "@next/next/no-img-element": "off",
     },

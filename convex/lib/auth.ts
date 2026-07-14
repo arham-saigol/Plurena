@@ -17,7 +17,9 @@ export async function requireUser(ctx: { auth: { getUserIdentity(): Promise<any>
 
 export async function requireOwned(ctx: { auth: { getUserIdentity(): Promise<any> }; db: GenericDatabaseReader<any> }, table: string, id: any) {
   const user = await requireUser(ctx);
-  const document = await ctx.db.get(id);
+  const normalizedId = ctx.db.normalizeId(table, id);
+  if (!normalizedId) throw new Error("NOT_FOUND");
+  const document = await ctx.db.get(table, normalizedId);
   if (!document) throw new Error("NOT_FOUND");
   assertOwner(String(document.userId), String(user._id));
   return { user, document };

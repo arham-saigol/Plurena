@@ -1,10 +1,15 @@
-export type AudienceCriteria = {
-  locations: string[];
-  description: string;
-  gender: "female" | "mixed" | "male";
-  minAge: number;
-  maxAge: number;
-};
+import { v, type Infer } from "convex/values";
+
+export const audienceValidator = v.object({
+  name: v.optional(v.string()),
+  locations: v.array(v.string()),
+  description: v.string(),
+  gender: v.union(v.literal("female"), v.literal("mixed"), v.literal("male")),
+  minAge: v.number(),
+  maxAge: v.number(),
+});
+
+export type AudienceCriteria = Infer<typeof audienceValidator>;
 
 export type GeneratedPersona = {
   ordinal: number;

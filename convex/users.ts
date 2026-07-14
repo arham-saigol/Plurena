@@ -54,7 +54,7 @@ export const completeOnboarding = mutation({
       throw new Error("INVALID_ONBOARDING_ANSWER");
     }
     if (user.onboardingClaimedAt) return { claimed: false, balanceCents: user.balanceCents };
-    const previous = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q: any) =>
+    const previous = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q) =>
       q.eq("userId", user._id).eq("idempotencyKey", `onboarding:${user._id}`),
     ).unique();
     if (previous) return { claimed: false, balanceCents: user.balanceCents };

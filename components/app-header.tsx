@@ -18,13 +18,13 @@ export function AppHeader() {
   const [menu, setMenu] = useState(false);
   const [billing, setBilling] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const initialized = useRef(false);
+  const initializedUserId = useRef<string | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!user || initialized.current) return;
-    initialized.current = true;
+    if (!user || initializedUserId.current === user.id) return;
+    initializedUserId.current = user.id;
     void ensure({});
   }, [ensure, user]);
 
@@ -75,6 +75,7 @@ function BillingDialog({ balanceCents, onClose }: { balanceCents: number; onClos
   const [selected, setSelected] = useState(1_000);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [renderedAt] = useState(() => Date.now());
   const addBalance = async () => {
     setBusy(true); setError("");
     try {
@@ -87,7 +88,7 @@ function BillingDialog({ balanceCents, onClose }: { balanceCents: number; onClos
   return <div className="dialog-backdrop" role="presentation"><section ref={dialogRef} className="dialog billing-dialog" role="dialog" aria-modal="true" aria-label="Billing details">
     <div className="dialog-title"><div><p className="eyebrow">Billing</p><h2>{money(balanceCents)} available</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={17} /></button></div>
     <div className="topup-section"><h3>Add balance</h3><p className="muted">One-time payment through Creem. No subscription.</p><div className="amount-options">{[1_000,2_000,5_000,10_000].map((amount) => <button key={amount} className={selected === amount ? "selected" : ""} onClick={() => setSelected(amount)}>{money(amount)}</button>)}</div>{error && <p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={busy} onClick={addBalance}><Plus size={16} /> {busy ? "Opening checkout…" : `Add ${money(selected)}`}</button></div>
-    <div className="ledger"><h3>Recent activity</h3>{ledger === undefined ? <div className="skeleton-row" /> : ledger.length === 0 ? <p className="muted">No credit activity yet.</p> : ledger.map((entry: any) => <div className="ledger-row" key={entry._id}><div><strong>{ledgerLabel(entry.kind)}</strong><span>{timeAgo(entry.createdAt)}</span></div><b className={entry.amountCents > 0 ? "positive" : ""}>{entry.amountCents > 0 ? "+" : ""}{money(entry.amountCents)}</b></div>)}</div>
+    <div className="ledger"><h3>Recent activity</h3>{ledger === undefined ? <div className="skeleton-row" /> : ledger.length === 0 ? <p className="muted">No credit activity yet.</p> : ledger.map((entry: any) => <div className="ledger-row" key={entry._id}><div><strong>{ledgerLabel(entry.kind)}</strong><span>{timeAgo(entry.createdAt, renderedAt)}</span></div><b className={entry.amountCents > 0 ? "positive" : ""}>{entry.amountCents > 0 ? "+" : ""}{money(entry.amountCents)}</b></div>)}</div>
   </section></div>;
 }
 

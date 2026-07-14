@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { aggregateComparison, aggregateOpenEnded } from "./lib/aggregation";
 
 const synthesize = internal.jobs.synthesize;
@@ -36,7 +37,7 @@ export const startAssignment = internalMutation({
     if (assignment.status === "running" && (assignment.leaseExpiresAt ?? 0) > now) return false;
     if (assignment.attemptCount >= 2) {
       await ctx.db.patch(assignment._id, { status: "failed", completedAt: now, leaseToken: undefined, leaseExpiresAt: undefined });
-      await updateTestProgress(ctx, assignment.testId);
+      await updateTestProgress(ctx, assignment.testId, assignment.status, "failed");
       return false;
     }
     const leaseExpiresAt = now + 8 * 60 * 1_000;
@@ -55,7 +56,7 @@ export const recoverAssignment = internalMutation({
     if (!assignment || assignment.status !== "running" || assignment.leaseToken !== args.leaseToken || (assignment.leaseExpiresAt ?? 0) > Date.now()) return;
     if (assignment.attemptCount >= 2) {
       await ctx.db.patch(assignment._id, { status: "failed", completedAt: Date.now(), leaseToken: undefined, leaseExpiresAt: undefined });
-      await updateTestProgress(ctx, assignment.testId);
+      await updateTestProgress(ctx, assignment.testId, assignment.status, "failed");
       return;
     }
     await ctx.db.patch(assignment._id, { status: "queued", leaseToken: undefined, leaseExpiresAt: undefined });
@@ -119,7 +120,7 @@ export const finishAssignment = internalMutation({
       createdAt: now,
     });
     await ctx.db.patch(assignment._id, { status: "completed", completedAt: now, leaseToken: undefined, leaseExpiresAt: undefined });
-    await updateTestProgress(ctx, assignment.testId);
+    await updateTestProgress(ctx, assignment.testId, assignment.status, "completed");
     return { duplicate: false };
   },
 });
@@ -130,18 +131,23 @@ export const failAssignment = internalMutation({
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment || assignment.status === "completed" || assignment.status === "failed" || assignment.leaseToken !== args.leaseToken || (assignment.leaseExpiresAt ?? 0) <= Date.now()) return;
     await ctx.db.patch(assignment._id, { status: "failed", completedAt: Date.now(), leaseToken: undefined, leaseExpiresAt: undefined });
-    await updateTestProgress(ctx, assignment.testId);
+    await updateTestProgress(ctx, assignment.testId, assignment.status, "failed");
   },
 });
 
-async function updateTestProgress(ctx: any, testId: any) {
+async function updateTestProgress(
+  ctx: MutationCtx,
+  testId: Id<"tests">,
+  previousStatus: Doc<"assignments">["status"],
+  nextStatus: Doc<"assignments">["status"],
+) {
   const test = await ctx.db.get(testId);
   if (!test || ["completed", "partial", "failed", "synthesizing"].includes(test.status)) return;
-  const assignments = await ctx.db.query("assignments").withIndex("by_test", (q: any) => q.eq("testId", testId)).collect();
-  const completedCount = assignments.filter((item: any) => item.status === "completed").length;
-  const failedCount = assignments.filter((item: any) => item.status === "failed").length;
-  const terminal = completedCount + failedCount === assignments.length;
-  await ctx.db.patch(testId, { completedCount, failedCount, status: terminal ? "synthesizing" : "running" });
+  const completedCount = test.completedCount - Number(previousStatus === "completed") + Number(nextStatus === "completed");
+  const failedCount = test.failedCount - Number(previousStatus === "failed") + Number(nextStatus === "failed");
+  const totalAssignmentCount = test.panelSize;
+  const terminal = completedCount + failedCount === totalAssignmentCount;
+  await ctx.db.patch(test._id, { completedCount, failedCount, status: terminal ? "synthesizing" : "running" });
   if (terminal) await ctx.scheduler.runAfter(0, synthesize, { testId });
 }
 

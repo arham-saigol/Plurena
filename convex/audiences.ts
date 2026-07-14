@@ -1,15 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
-
-const criteria = v.object({
-  name: v.optional(v.string()),
-  locations: v.array(v.string()),
-  description: v.string(),
-  gender: v.union(v.literal("female"), v.literal("mixed"), v.literal("male")),
-  minAge: v.number(),
-  maxAge: v.number(),
-});
+import { audienceValidator } from "./lib/panel";
 
 export const list = query({
   args: {},
@@ -20,7 +12,7 @@ export const list = query({
 });
 
 export const save = mutation({
-  args: { name: v.string(), criteria },
+  args: { name: v.string(), criteria: audienceValidator },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const name = args.name.trim();

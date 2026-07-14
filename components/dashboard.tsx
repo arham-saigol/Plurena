@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ChartBar, ChatText, Faders, Plus, WarningCircle } from "@phosphor-icons/react";
@@ -17,20 +18,21 @@ export function Dashboard() {
   const [status, setStatus] = useState<"all" | "queued" | "running" | "synthesizing" | "completed" | "partial" | "failed">("all");
   const tests = useQuery(api.tests.list, me ? { type: type === "all" ? undefined : type, status: status === "all" ? undefined : status } : "skip");
   const [newTest, setNewTest] = useState(false);
+  const [renderedAt] = useState(() => Date.now());
 
   return <div className="app-shell"><AppHeader /><main className="dashboard-main"><div className="page-heading"><div><p className="eyebrow">Workspace</p><h1>Tests</h1><p className="muted">Launch a panel, then watch responses arrive here.</p></div><button className="button primary" onClick={() => setNewTest(true)} disabled={!me?.onboardingClaimedAt}><Plus size={16} /> New test</button></div>
     <div className="list-toolbar"><div className="filters"><label><span>Type</span><select value={type} onChange={(event) => setType(event.target.value as any)}><option value="all">All types</option><option value="compare">Compare</option><option value="question">Question</option></select></label><label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">All statuses</option><option value="running">Running</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option></select></label></div><span className="result-count">{tests?.length ?? 0} {tests?.length === 1 ? "test" : "tests"}</span></div>
-    <section className="test-list" aria-label="Past tests">{tests === undefined ? <LoadingRows /> : tests.length === 0 ? <EmptyState onCreate={() => setNewTest(true)} ready={Boolean(me?.onboardingClaimedAt)} filtered={type !== "all" || status !== "all"} onClear={() => { setType("all"); setStatus("all"); }} /> : tests.map((test: any) => <TestRow key={test._id} test={test} />)}</section>
+    <section className="test-list" aria-label="Past tests">{tests === undefined ? <LoadingRows /> : tests.length === 0 ? <EmptyState onCreate={() => setNewTest(true)} ready={Boolean(me?.onboardingClaimedAt)} filtered={type !== "all" || status !== "all"} onClear={() => { setType("all"); setStatus("all"); }} /> : tests.map((test) => <TestRow key={test._id} test={test} renderedAt={renderedAt} />)}</section>
   </main>
   {me && !me.onboardingClaimedAt && <OnboardingDialog />}
-  {newTest && pricing && me && <NewTestDialog pricing={pricing as any} balanceCents={me.balanceCents} onClose={() => setNewTest(false)} />}
+  {newTest && pricing && me && <NewTestDialog pricing={pricing} balanceCents={me.balanceCents} onClose={() => setNewTest(false)} />}
   </div>;
 }
 
-function TestRow({ test }: { test: any }) {
+function TestRow({ test, renderedAt }: { test: Doc<"tests">; renderedAt: number }) {
   const done = test.completedCount + test.failedCount;
   const running = ["queued", "running", "synthesizing"].includes(test.status);
-  return <Link href={`/tests/${test._id}`} className="test-row"><div className={`type-icon ${test.testType}`}>{test.testType === "compare" ? <ChartBar size={17} /> : <ChatText size={17} />}</div><div className="test-main"><div><h3>{test.title}</h3><span>{test.testType === "compare" ? "Comparison" : "Open question"} · {test.panelSize} respondents · {money(test.priceCents)}</span></div>{running && <div className="row-progress"><div><span aria-live="polite">{test.status === "synthesizing" ? "Writing synthesis" : done ? `${test.completedCount} of ${test.panelSize} responses` : "Awaiting responses"}</span><b>{percent(done, test.panelSize)}%</b></div><i role="progressbar" aria-label="Panel progress" aria-valuemin={0} aria-valuemax={test.panelSize} aria-valuenow={done}><span style={{ width: `${percent(done, test.panelSize)}%` }} /></i>{test.failedCount > 0 && <small><WarningCircle size={12} /> {test.failedCount} failed</small>}</div>}</div><div className="test-meta"><Status status={test.status} /><time>{timeAgo(test.launchedAt)}</time></div><ArrowRight className="row-arrow" size={16} /></Link>;
+  return <Link href={`/tests/${test._id}`} className="test-row"><div className={`type-icon ${test.testType}`}>{test.testType === "compare" ? <ChartBar size={17} /> : <ChatText size={17} />}</div><div className="test-main"><div><h3>{test.title}</h3><span>{test.testType === "compare" ? "Comparison" : "Open question"} · {test.panelSize} respondents · {money(test.priceCents)}</span></div>{running && <div className="row-progress"><div><span aria-live="polite">{test.status === "synthesizing" ? "Writing synthesis" : done ? `${test.completedCount} of ${test.panelSize} responses` : "Awaiting responses"}</span><b>{percent(done, test.panelSize)}%</b></div><i role="progressbar" aria-label="Panel progress" aria-valuemin={0} aria-valuemax={test.panelSize} aria-valuenow={done}><span style={{ width: `${percent(done, test.panelSize)}%` }} /></i>{test.failedCount > 0 && <small><WarningCircle size={12} /> {test.failedCount} failed</small>}</div>}</div><div className="test-meta"><Status status={test.status} /><time>{timeAgo(test.launchedAt, renderedAt)}</time></div><ArrowRight className="row-arrow" size={16} /></Link>;
 }
 
 function Status({ status }: { status: string }) {

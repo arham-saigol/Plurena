@@ -8,8 +8,12 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      CONVEX_DEPLOY_KEY_PRESENT: ${{ secrets.CONVEX_DEPLOY_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -21,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npm audit --audit-level=high
       - name: Validate Convex against the configured deployment
-        if: ${{ secrets.CONVEX_DEPLOY_KEY != '' }}
+        if: ${{ env.CONVEX_DEPLOY_KEY_PRESENT == 'true' }}
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: npx convex codegen --typecheck enable

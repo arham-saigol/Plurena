@@ -308,12 +308,12 @@ export const synthesize = internalAction({
     let synthesis: z.infer<typeof synthesisSchema> | undefined;
     let usedRoute: { provider: string; model: string } | undefined;
     let usedResult: Awaited<ReturnType<typeof callChat>> | undefined;
-    let revisionPrompt = "";
     let synthesisCalls = 0;
     let synthesisAttempt = 0;
     const synthesisDeadline = Date.now() + 8 * 60 * 1_000;
     for (const route of routesWithCrossModelFallback(requested.key, false)) {
       if (synthesisCalls >= 6 || Date.now() >= synthesisDeadline) break;
+      let revisionPrompt = "";
       let pendingSynthesisAttempt: { attempt: number; report: HttpAttemptReport } | undefined;
       try {
         for (let revision = 0; revision < 2 && synthesisCalls < 6 && Date.now() < synthesisDeadline; revision += 1) {

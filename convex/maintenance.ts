@@ -19,6 +19,7 @@ export const recoverWork = internalMutation({
     ).take(50);
     for (const assignment of expired) {
       if (assignment.leaseToken) await ctx.scheduler.runAfter(0, recoverAssignment, { assignmentId: assignment._id, leaseToken: assignment.leaseToken });
+      else await ctx.db.patch(assignment._id, { status: "queued", leaseExpiresAt: undefined });
     }
 
     const stalledSynthesis = await ctx.db.query("tests").withIndex("by_status_launched", (q: any) =>
