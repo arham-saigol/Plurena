@@ -37,6 +37,13 @@ const synthesisSchema = z.object({
 
 type MessagePart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 type ChatMessage = { role: "system" | "user"; content: string | MessagePart[] };
+type AnthropicMessagePart = { type: "text"; text: string } | { type: "image"; source: { type: "url"; url: string } };
+
+const OPENCODE_GO_API_ROOT = "https://opencode.ai/zen/go/v1";
+const OPENROUTER_API_ROOT = "https://openrouter.ai/api/v1";
+const OPENROUTER_SITE_URL = "https://plurena.com";
+const AI_REQUEST_TIMEOUT_MS = 60_000;
+const AI_MAX_RETRIES = 1;
 
 const RESPONDENT_SYSTEM_PROMPT = `You are one respondent in an independent research panel. Embody the assigned persona in age, location, habits, constraints, and point of view. Assess only the supplied material. Do not assume facts that are absent. Make an independent choice without trying to agree with other respondents. Return only schema-valid JSON. For comparisons, choose one supplied option ID or null for None of the above and give 2 to 5 useful feedback points. For open questions, preserve a natural free-form answer and give 2 to 5 concise supporting observations.`;
 
@@ -44,27 +51,79 @@ function cleanJson(raw: string) {
   return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
 }
 
-function providerConfig(provider: ModelRoute["provider"]) {
-  if (provider === "openrouter") {
+function providerConfig(route: ModelRoute): { endpoint: string; apiKey: string | undefined; headers: Record<string, string> } {
+  if (route.provider === "openrouter") {
+    const apiKey = process.env.OPENROUTER_API_KEY;
     return {
-      baseUrl: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
-      headers: {
-        "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "https://plurena.app",
-        "X-Title": process.env.OPENROUTER_APP_NAME ?? "Plurena",
-      } as Record<string, string>,
+      endpoint: `${OPENROUTER_API_ROOT}/chat/completions`,
+      apiKey,
+      headers: apiKey ? {
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": OPENROUTER_SITE_URL,
+        "X-OpenRouter-Title": "Plurena",
+      } : {},
     };
   }
-  const rawBaseUrl = process.env.OPENCODE_GO_BASE_URL;
-  const allowedHosts = new Set((process.env.OPENCODE_GO_ALLOWED_HOSTS ?? "").split(",").map((host) => host.trim().toLowerCase()).filter(Boolean));
-  let baseUrl: string | undefined;
-  try {
-    const parsed = rawBaseUrl ? new URL(rawBaseUrl) : undefined;
-    if (parsed?.protocol === "https:" && allowedHosts.has(parsed.hostname.toLowerCase())) baseUrl = parsed.toString().replace(/\/$/, "");
-  } catch {
-    baseUrl = undefined;
+  const apiKey = process.env.OPENCODE_GO_API_KEY;
+  const usesAnthropic = route.protocol === "anthropic_messages";
+  return {
+    endpoint: `${OPENCODE_GO_API_ROOT}/${usesAnthropic ? "messages" : "chat/completions"}`,
+    apiKey,
+    headers: apiKey
+      ? usesAnthropic
+        ? { "x-api-key": apiKey, "anthropic-version": "2023-06-01" }
+        : { Authorization: `Bearer ${apiKey}` }
+      : {},
+  };
+}
+
+function anthropicContent(content: ChatMessage["content"]): string | AnthropicMessagePart[] {
+  if (typeof content === "string") return content;
+  return content.map((part) => part.type === "text"
+    ? part
+    : { type: "image", source: { type: "url", url: part.image_url.url } });
+}
+
+function requestBody(route: ModelRoute, messages: ChatMessage[], maxTokens: number) {
+  if (route.protocol === "anthropic_messages") {
+    const system = messages
+      .filter((message) => message.role === "system")
+      .map((message) => typeof message.content === "string" ? message.content : message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n"))
+      .join("\n\n");
+    return {
+      model: route.model,
+      system: system || undefined,
+      messages: messages.filter((message) => message.role === "user").map((message) => ({ role: "user", content: anthropicContent(message.content) })),
+      temperature: 0.8,
+      max_tokens: maxTokens,
+    };
   }
-  return { baseUrl, apiKey: process.env.OPENCODE_GO_API_KEY, headers: {} as Record<string, string> };
+  return { model: route.model, messages, temperature: 0.8, max_tokens: maxTokens, response_format: { type: "json_object" } };
+}
+
+function responseContent(route: ModelRoute, body: any): string | undefined {
+  if (route.protocol === "anthropic_messages") {
+    const text = Array.isArray(body.content)
+      ? body.content.filter((part: any) => part?.type === "text" && typeof part.text === "string").map((part: any) => part.text).join("\n")
+      : undefined;
+    return text || undefined;
+  }
+  return body.choices?.[0]?.message?.content;
+}
+
+function responseUsage(route: ModelRoute, body: any) {
+  if (route.protocol === "anthropic_messages") {
+    return {
+      inputTokens: typeof body.usage?.input_tokens === "number" ? body.usage.input_tokens : undefined,
+      outputTokens: typeof body.usage?.output_tokens === "number" ? body.usage.output_tokens : undefined,
+      estimatedCostUsd: undefined,
+    };
+  }
+  return {
+    inputTokens: typeof body.usage?.prompt_tokens === "number" ? body.usage.prompt_tokens : undefined,
+    outputTokens: typeof body.usage?.completion_tokens === "number" ? body.usage.completion_tokens : undefined,
+    estimatedCostUsd: typeof body.usage?.cost === "number" ? body.usage.cost : undefined,
+  };
 }
 
 type HttpAttemptReport = {
@@ -84,21 +143,19 @@ async function callChat(
   onAttempt?: (report: HttpAttemptReport) => Promise<void>,
   attemptBudget?: number,
 ) {
-  const config = providerConfig(route.provider);
-  if (!config.baseUrl || !config.apiKey) throw Object.assign(new Error("PROVIDER_NOT_CONFIGURED"), { retryable: false });
-  const retries = Math.max(0, Math.min(2, Number(process.env.AI_MAX_RETRIES ?? 1)));
-  const limit = Math.max(0, Math.min(retries + 1, attemptBudget ?? retries + 1));
+  const config = providerConfig(route);
+  if (!config.apiKey) throw Object.assign(new Error("PROVIDER_NOT_CONFIGURED"), { retryable: false });
+  const limit = Math.max(0, Math.min(AI_MAX_RETRIES + 1, attemptBudget ?? AI_MAX_RETRIES + 1));
   if (!limit) throw Object.assign(new Error("ATTEMPT_BUDGET_EXHAUSTED"), { retryable: false });
-  const timeout = Math.max(5_000, Math.min(60_000, Number(process.env.AI_REQUEST_TIMEOUT_MS ?? 45_000)));
   let lastError: unknown;
   for (let retry = 0; retry < limit; retry += 1) {
     const started = Date.now();
     try {
-      const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      const response = await fetch(config.endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}`, ...config.headers },
-        body: JSON.stringify({ model: route.model, messages, temperature: 0.8, max_tokens: maxTokens, response_format: { type: "json_object" } }),
-        signal: AbortSignal.timeout(timeout),
+        headers: { "Content-Type": "application/json", ...config.headers },
+        body: JSON.stringify(requestBody(route, messages, maxTokens)),
+        signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
         redirect: "error",
       });
       if (!response.ok) {
@@ -112,14 +169,10 @@ async function callChat(
         continue;
       }
       const body = await response.json() as any;
-      const content = body.choices?.[0]?.message?.content;
+      const content = responseContent(route, body);
       if (typeof content !== "string") throw Object.assign(new Error("INVALID_PROVIDER_OUTPUT"), { retryable: true });
       const latencyMs = Date.now() - started;
-      const usage = {
-        inputTokens: typeof body.usage?.prompt_tokens === "number" ? body.usage.prompt_tokens : undefined,
-        outputTokens: typeof body.usage?.completion_tokens === "number" ? body.usage.completion_tokens : undefined,
-        estimatedCostUsd: typeof body.usage?.cost === "number" ? body.usage.cost : undefined,
-      };
+      const usage = responseUsage(route, body);
       await onAttempt?.({ status: "succeeded", latencyMs, ...usage });
       return { content, latencyMs, ...usage };
     } catch (error: any) {

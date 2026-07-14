@@ -50,13 +50,9 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_WEBHOOK_SIGNING_SECRET=
 CLERK_WEBHOOK_FORWARD_SECRET=
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
 ```
 
-The app uses one Clerk `<SignIn>` surface for new and returning Google users.
+The app configures Clerk in `app/layout.tsx` and `proxy.ts`: new and returning Google users share `/sign-in`, protected routes redirect there, and authentication falls back to `/dashboard` when there is no saved destination.
 Register `https://your-public-host/api/webhooks/clerk` for Clerk's `user.deleted` event. Use the endpoint signing secret for `CLERK_WEBHOOK_SIGNING_SECRET`, and set the same random `CLERK_WEBHOOK_FORWARD_SECRET` in Vercel and the Convex deployment. Verified deletion events schedule an idempotent, batched erasure of the user row, research data, billing rows, and stored files; a five-minute cron resumes interrupted jobs.
 
 ### 3. Configure Convex
@@ -74,26 +70,15 @@ npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer
 npx convex env set PAYMENT_WEBHOOK_FORWARD_SECRET replace-with-a-long-random-value
 npx convex env set CLERK_WEBHOOK_FORWARD_SECRET replace-with-another-long-random-value
 npx convex env set OPENROUTER_API_KEY your-key
-npx convex env set OPENROUTER_SITE_URL http://localhost:3000
-npx convex env set OPENROUTER_APP_NAME Plurena
 ```
 
-Add OpenCode Go when its OpenAI-compatible application endpoint and commercial terms are confirmed:
+Add OpenCode Go when you want to use it before each model's OpenRouter fallback:
 
 ```bash
 npx convex env set OPENCODE_GO_API_KEY your-key
-npx convex env set OPENCODE_GO_BASE_URL https://your-approved-endpoint/v1
-npx convex env set OPENCODE_GO_ALLOWED_HOSTS api.your-approved-endpoint.example
 ```
 
-`OPENCODE_GO_BASE_URL` is configuration because the supplied model specification does not define a stable endpoint. If the key or URL is absent, assignments continue through each model's OpenRouter fallback. If both routes fail, Plurena tries another eligible model.
-
-Optional action tuning:
-
-```bash
-npx convex env set AI_REQUEST_TIMEOUT_MS 45000
-npx convex env set AI_MAX_RETRIES 1
-```
+OpenCode's documented Go endpoint is fixed in code. Each model route also records whether it uses OpenAI Chat Completions or Anthropic Messages; MiniMax M3 and Qwen3.7 Plus use the Anthropic contract. If the key is absent, assignments continue through each model's OpenRouter fallback. AI requests have one retry and a 60-second per-attempt timeout, both defined as application policy in `convex/jobs.ts`.
 
 ### 4. Configure Creem
 
@@ -149,13 +134,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `CREEM_TEST_MODE` | Vercel | Billing | Uses Creem test API unless set to `false` |
 | `PAYMENT_WEBHOOK_FORWARD_SECRET` | Vercel + Convex | Billing | Authenticates the verified webhook handoff |
 | `OPENCODE_GO_API_KEY` | Convex | Optional | OpenCode Go provider key |
-| `OPENCODE_GO_BASE_URL` | Convex | Optional | Approved OpenAI-compatible endpoint root |
-| `OPENCODE_GO_ALLOWED_HOSTS` | Convex | Optional | Comma-separated HTTPS host allowlist for that endpoint |
 | `OPENROUTER_API_KEY` | Convex | AI | OpenRouter provider key |
-| `OPENROUTER_SITE_URL` | Convex | AI | OpenRouter attribution URL |
-| `OPENROUTER_APP_NAME` | Convex | Optional | OpenRouter attribution name |
-| `AI_REQUEST_TIMEOUT_MS` | Convex | Optional | Per-request timeout, default 45 seconds and capped at 60 |
-| `AI_MAX_RETRIES` | Convex | Optional | Retry count per route, default 1 and capped at 2 |
 
 Keep provider, Clerk secret, Creem, and webhook keys out of `NEXT_PUBLIC_*` variables.
 

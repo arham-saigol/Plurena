@@ -13,7 +13,12 @@ const themeScript = `try{const t=localStorage.getItem('plurena-theme');const d=t
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-in"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
       <html lang="en" suppressHydrationWarning>
         <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
         <body><ConvexClientProvider>{children}</ConvexClientProvider></body>
