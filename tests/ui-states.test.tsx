@@ -72,6 +72,36 @@ describe("critical UI states", () => {
     }
   });
 
+  it("never shows provider or model details on respondent cards", () => {
+    mocks.usePaginatedQuery.mockReturnValue({
+      results: [{
+        _id: "response-1",
+        answer: "A private answer",
+        feedback: ["A useful observation"],
+        provider: "hidden-provider",
+        model: "hidden-model",
+        persona: {
+          ordinal: 0,
+          age: 32,
+          location: "US",
+          gender: "female",
+          pointOfView: "Practical buyer",
+          interests: ["design"],
+          constraints: ["budget"],
+        },
+      }],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    render(<TestDetails testId="test-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /Responses/ }));
+
+    expect(screen.getByText("A private answer")).toBeInTheDocument();
+    expect(screen.queryByText("hidden-provider")).not.toBeInTheDocument();
+    expect(screen.queryByText("hidden-model")).not.toBeInTheDocument();
+  });
+
   it("distinguishes a filtered empty result from an empty account", async () => {
     render(<Dashboard />);
     expect(screen.getByRole("heading", { name: "No tests yet" })).toBeInTheDocument();

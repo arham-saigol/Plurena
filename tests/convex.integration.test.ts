@@ -53,6 +53,46 @@ describe("Convex transaction boundaries", () => {
     await expect(stranger.query(api.tests.get, { testId })).rejects.toThrow("NOT_FOUND");
   });
 
+  it("does not expose model routing details through customer-facing test queries", async () => {
+    const t = makeTest();
+    const owner = t.withIdentity({ subject: "model-private", tokenIdentifier: "issuer|model-private" });
+    const userId = await owner.mutation(api.users.ensureCurrent, {});
+    const { testId } = await t.run(async (ctx) => {
+      const testId = await ctx.db.insert("tests", {
+        userId,
+        clientRequestId: "model-private-request",
+        inputFingerprint: "model-private-fingerprint",
+        title: "Private model details",
+        testType: "question",
+        status: "completed",
+        audience: { locations: ["US"], description: "Private audience", gender: "mixed", minAge: 20, maxAge: 40 },
+        panelSize: 20,
+        priceCents: 500,
+        priceVersion: "panel-v1",
+        completedCount: 1,
+        failedCount: 19,
+        reusedPanel: false,
+        launchedAt: Date.now(),
+        completedAt: Date.now(),
+      });
+      const personaId = await ctx.db.insert("personas", { testId, userId, ordinal: 0, age: 32, location: "US", gender: "female", interests: ["design"], habits: [], constraints: ["budget"], pointOfView: "Practical buyer" });
+      const assignmentId = await ctx.db.insert("assignments", { testId, userId, personaId, ordinal: 0, shuffledOptionIds: [], modelKey: "internal-assignment-model", status: "completed", attemptCount: 1, createdAt: Date.now(), completedAt: Date.now() });
+      await ctx.db.insert("responses", { testId, userId, assignmentId, personaId, answer: "Private answer", feedback: ["Private feedback"], provider: "internal-provider", model: "internal-response-model", latencyMs: 1, createdAt: Date.now() });
+      await ctx.db.insert("syntheses", { testId, userId, summary: "Private summary", patterns: [], disagreements: [], nextActions: [], directness: 5, rhythm: 5, trust: 5, authenticity: 5, density: 5, provider: "internal-provider", model: "internal-synthesis-model", createdAt: Date.now() });
+      return { testId };
+    });
+
+    const detail = await owner.query(api.tests.get, { testId });
+    const responses = await owner.query(api.tests.getResponses, { testId, paginationOpts: { cursor: null, numItems: 20 } });
+
+    expect(detail.synthesis).not.toHaveProperty("provider");
+    expect(detail.synthesis).not.toHaveProperty("model");
+    expect(responses.page[0]).not.toHaveProperty("provider");
+    expect(responses.page[0]).not.toHaveProperty("model");
+    expect(JSON.stringify({ detail, responses })).not.toContain("internal-response-model");
+    expect(JSON.stringify({ detail, responses })).not.toContain("internal-synthesis-model");
+  });
+
   it("registers an authenticated direct-storage image without an orphan", async () => {
     const t = makeTest();
     const user = t.withIdentity({ subject: "uploader", tokenIdentifier: "issuer|uploader" });

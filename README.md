@@ -23,7 +23,7 @@ The marketing page lives at `/`. `proxy.ts` protects `/dashboard`, `/tests/*`, a
 - Compare tests accept two to five text or image options. Each respondent gets a stable, seeded option order.
 - Image assignments use vision models only.
 - Models and fallback routes live in [`convex/lib/modelRegistry.ts`](convex/lib/modelRegistry.ts) and match [`MODELS.md`](MODELS.md).
-- Plurena records the provider and model on every response and provider attempt.
+- Plurena records provider and model routing internally for operations; customer-facing queries do not return those fields.
 
 ## Local setup
 
@@ -205,6 +205,6 @@ Live Clerk, Creem, and AI-provider end-to-end tests still require sandbox creden
 
 - Confirm the OpenCode Go base URL, quotas, and commercial panel use before production traffic. The adapter fails over when the provider is absent.
 - Verify Creem's current `checkout.completed` payload in test mode against the pinned request validator before taking live payments. Creem's SDK and webhook payloads have changed over time.
-- AI respondents can make mistakes. Plurena keeps provider identity, disagreement, failed assignments, and None-of-the-above responses visible so researchers can judge the evidence.
+- AI respondents can make mistakes. Plurena keeps disagreement, failed assignments, and None-of-the-above responses visible so researchers can judge the evidence while provider and model identities remain internal.
 - Confirm provider data-processing terms, retention controls, and spend caps. Plurena discloses in the launch review that OpenCode Go or OpenRouter fallbacks receive study material and persona context.
 - The $6 promotion is atomic per account and capped globally at 20 claims/$120 per UTC day. Keep Clerk bot protection and provider hard spend limits enabled, and monitor account and launch velocity.

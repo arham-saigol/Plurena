@@ -196,7 +196,13 @@ export const get = query({
       const asset = option.storageId ? await ctx.db.query("assets").withIndex("by_storage", (q) => q.eq("storageId", option.storageId!)).unique() : null;
       return { ...option, assetId: asset?._id, imageUrl: option.storageId ? await ctx.storage.getUrl(option.storageId) : undefined };
     }));
-    return { test, options: optionRows.sort((a, b) => a.position - b.position), aggregate, synthesis };
+    const publicSynthesis = synthesis ? {
+      summary: synthesis.summary,
+      patterns: synthesis.patterns,
+      disagreements: synthesis.disagreements,
+      nextActions: synthesis.nextActions,
+    } : null;
+    return { test, options: optionRows.sort((a, b) => a.position - b.position), aggregate, synthesis: publicSynthesis };
   },
 });
 
@@ -205,7 +211,25 @@ export const getResponses = query({
   handler: async (ctx, args) => {
     await requireOwned(ctx, "tests", args.testId);
     const result = await ctx.db.query("responses").withIndex("by_test", (q) => q.eq("testId", args.testId)).paginate(args.paginationOpts);
-    const page = await Promise.all(result.page.map(async (response) => ({ ...response, persona: await ctx.db.get(response.personaId) })));
+    const page = await Promise.all(result.page.map(async (response) => {
+      const persona = await ctx.db.get(response.personaId);
+      return {
+        _id: response._id,
+        choiceOptionId: response.choiceOptionId ?? null,
+        answer: response.answer ?? null,
+        feedback: response.feedback,
+        createdAt: response.createdAt,
+        persona: persona ? {
+          ordinal: persona.ordinal,
+          age: persona.age,
+          location: persona.location,
+          gender: persona.gender,
+          interests: persona.interests,
+          constraints: persona.constraints,
+          pointOfView: persona.pointOfView,
+        } : null,
+      };
+    }));
     return { ...result, page };
   },
 });
