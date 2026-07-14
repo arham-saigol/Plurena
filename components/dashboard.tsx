@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
@@ -16,13 +16,17 @@ export function Dashboard() {
   const pricing = useQuery(api.pricing.getConfig, {});
   const [type, setType] = useState<"all" | "compare" | "question">("all");
   const [status, setStatus] = useState<"all" | "queued" | "running" | "synthesizing" | "completed" | "partial" | "failed">("all");
-  const tests = useQuery(api.tests.list, me ? { type: type === "all" ? undefined : type, status: status === "all" ? undefined : status } : "skip");
+  const { results: tests, status: historyStatus, loadMore } = usePaginatedQuery(
+    api.tests.list,
+    me ? { type: type === "all" ? undefined : type, status: status === "all" ? undefined : status } : "skip",
+    { initialNumItems: 50 },
+  );
   const [newTest, setNewTest] = useState(false);
   const [renderedAt] = useState(() => Date.now());
 
   return <div className="app-shell"><AppHeader /><main className="dashboard-main"><div className="page-heading"><div><p className="eyebrow">Workspace</p><h1>Tests</h1><p className="muted">Launch a panel, then watch responses arrive here.</p></div><button className="button primary" onClick={() => setNewTest(true)} disabled={!me?.onboardingClaimedAt}><Plus size={16} /> New test</button></div>
-    <div className="list-toolbar"><div className="filters"><label><span>Type</span><select value={type} onChange={(event) => setType(event.target.value as any)}><option value="all">All types</option><option value="compare">Compare</option><option value="question">Question</option></select></label><label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">All statuses</option><option value="running">Running</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option></select></label></div><span className="result-count">{tests?.length ?? 0} {tests?.length === 1 ? "test" : "tests"}</span></div>
-    <section className="test-list" aria-label="Past tests">{tests === undefined ? <LoadingRows /> : tests.length === 0 ? <EmptyState onCreate={() => setNewTest(true)} ready={Boolean(me?.onboardingClaimedAt)} filtered={type !== "all" || status !== "all"} onClear={() => { setType("all"); setStatus("all"); }} /> : tests.map((test) => <TestRow key={test._id} test={test} renderedAt={renderedAt} />)}</section>
+    <div className="list-toolbar"><div className="filters"><label><span>Type</span><select value={type} onChange={(event) => setType(event.target.value as any)}><option value="all">All types</option><option value="compare">Compare</option><option value="question">Question</option></select></label><label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">All statuses</option><option value="running">Running</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option></select></label></div><span className="result-count">{tests.length} {tests.length === 1 ? "test" : "tests"}{historyStatus !== "Exhausted" ? " loaded" : ""}</span></div>
+    <section className="test-list" aria-label="Past tests">{historyStatus === "LoadingFirstPage" ? <LoadingRows /> : tests.length === 0 ? <EmptyState onCreate={() => setNewTest(true)} ready={Boolean(me?.onboardingClaimedAt)} filtered={type !== "all" || status !== "all"} onClear={() => { setType("all"); setStatus("all"); }} /> : <>{tests.map((test) => <TestRow key={test._id} test={test} renderedAt={renderedAt} />)}{historyStatus !== "Exhausted" && <button className="button secondary history-more" disabled={historyStatus === "LoadingMore"} onClick={() => loadMore(50)}>{historyStatus === "LoadingMore" ? "Loading…" : "Load older tests"}</button>}</>}</section>
   </main>
   {me && !me.onboardingClaimedAt && <OnboardingDialog />}
   {newTest && pricing && me && <NewTestDialog pricing={pricing} balanceCents={me.balanceCents} onClose={() => setNewTest(false)} />}

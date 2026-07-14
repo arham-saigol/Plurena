@@ -170,15 +170,16 @@ export const list = query({
   args: {
     type: v.optional(v.union(v.literal("compare"), v.literal("question"))),
     status: v.optional(v.union(v.literal("queued"), v.literal("running"), v.literal("synthesizing"), v.literal("completed"), v.literal("partial"), v.literal("failed"))),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     if (args.type && args.status) {
-      return await ctx.db.query("tests").withIndex("by_user_type_status_created", (q) => q.eq("userId", user._id).eq("testType", args.type!).eq("status", args.status!)).order("desc").take(100);
+      return await ctx.db.query("tests").withIndex("by_user_type_status_created", (q) => q.eq("userId", user._id).eq("testType", args.type!).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
     }
-    if (args.type) return await ctx.db.query("tests").withIndex("by_user_type_created", (q) => q.eq("userId", user._id).eq("testType", args.type!)).order("desc").take(100);
-    if (args.status) return await ctx.db.query("tests").withIndex("by_user_status_created", (q) => q.eq("userId", user._id).eq("status", args.status!)).order("desc").take(100);
-    return await ctx.db.query("tests").withIndex("by_user_created", (q) => q.eq("userId", user._id)).order("desc").take(100);
+    if (args.type) return await ctx.db.query("tests").withIndex("by_user_type_created", (q) => q.eq("userId", user._id).eq("testType", args.type!)).order("desc").paginate(args.paginationOpts);
+    if (args.status) return await ctx.db.query("tests").withIndex("by_user_status_created", (q) => q.eq("userId", user._id).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
+    return await ctx.db.query("tests").withIndex("by_user_created", (q) => q.eq("userId", user._id)).order("desc").paginate(args.paginationOpts);
   },
 });
 

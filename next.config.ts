@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { validateProductionEnvironment } from "./lib/production-env";
+
+validateProductionEnvironment();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

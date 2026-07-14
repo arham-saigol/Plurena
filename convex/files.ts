@@ -1,33 +1,58 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action } from "./_generated/server";
+import { action, mutation } from "./_generated/server";
+import { requireUser } from "./lib/auth";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-export const storeImage = action({
-  args: { bytes: v.bytes(), contentType: v.string() },
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx): Promise<{ uploadUrl: string; uploadGrantId: Id<"uploadGrants"> }> => {
+    const user = await requireUser(ctx);
+    const uploadGrantId: Id<"uploadGrants"> = await ctx.runMutation(internal.fileInternals.beginUpload, { clerkId: user.clerkId });
+    return { uploadUrl: await ctx.storage.generateUploadUrl(), uploadGrantId };
+  },
+});
+
+export const finalizeImage = action({
+  args: { storageId: v.id("_storage"), uploadGrantId: v.id("uploadGrants") },
   handler: async (ctx, args): Promise<Id<"assets">> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("UNAUTHENTICATED");
-    if (!ALLOWED_IMAGE_TYPES.has(args.contentType) || !matchesImageSignature(args.bytes, args.contentType)) throw new Error("UNSUPPORTED_IMAGE_TYPE");
-    if (args.bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("IMAGE_TOO_LARGE");
-
-    const grant: { userId: Id<"users">; uploadGrantId: Id<"uploadGrants"> } = await ctx.runMutation(internal.fileInternals.beginUpload, { clerkId: identity.subject });
-    let storageId: Id<"_storage"> | undefined;
     try {
-      storageId = await ctx.storage.store(new Blob([args.bytes], { type: args.contentType }));
+      const blob = await ctx.storage.get(args.storageId);
+      if (!blob) throw new Error("UPLOAD_NOT_FOUND");
+      if (blob.size > MAX_IMAGE_BYTES) throw new Error("IMAGE_TOO_LARGE");
+      if (!ALLOWED_IMAGE_TYPES.has(blob.type) || !matchesImageSignature(await blob.arrayBuffer(), blob.type)) {
+        throw new Error("UNSUPPORTED_IMAGE_TYPE");
+      }
       return await ctx.runMutation(internal.fileInternals.finalizeUpload, {
-        ...grant,
-        storageId,
-        contentType: args.contentType,
-        size: args.bytes.byteLength,
+        clerkId: identity.subject,
+        uploadGrantId: args.uploadGrantId,
+        storageId: args.storageId,
+        contentType: blob.type,
+        size: blob.size,
       });
     } catch (error) {
-      if (storageId) await ctx.storage.delete(storageId);
+      await ctx.storage.delete(args.storageId);
       throw error;
     }
+  },
+});
+
+export const discardAsset = mutation({
+  args: { assetId: v.id("assets") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const asset = await ctx.db.get(args.assetId);
+    if (!asset || asset.userId !== user._id) throw new Error("NOT_FOUND");
+    const reference = await ctx.db.query("options").withIndex("by_storage", (q) => q.eq("storageId", asset.storageId)).first();
+    if (reference) throw new Error("ASSET_IN_USE");
+    await ctx.storage.delete(asset.storageId);
+    await ctx.db.delete(asset._id);
+    return { deleted: true };
   },
 });
 

@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { aggregateComparison, aggregateOpenEnded } from "./lib/aggregation";
+import { applyCreditEntry } from "./lib/credits";
 
 const synthesize = internal.jobs.synthesize;
 const runRespondent = internal.jobs.runRespondent;
@@ -247,6 +248,34 @@ export const saveSynthesis = internalMutation({
       createdAt: Date.now(),
     });
     const status = test.completedCount > 0 ? (test.failedCount > 0 ? "partial" : "completed") : "failed";
+    if (status === "failed") {
+      const idempotencyKey = `test:${test._id}:refund`;
+      const existingRefund = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q) =>
+        q.eq("userId", test.userId).eq("idempotencyKey", idempotencyKey),
+      ).unique();
+      if (!existingRefund) {
+        const user = await ctx.db.get(test.userId);
+        if (user) {
+          const balanceCents = applyCreditEntry(
+            { balanceCents: user.balanceCents, appliedKeys: new Set<string>() },
+            idempotencyKey,
+            test.priceCents,
+          ).balanceCents;
+          const now = Date.now();
+          await ctx.db.insert("creditLedger", {
+            userId: test.userId,
+            amountCents: test.priceCents,
+            balanceAfterCents: balanceCents,
+            kind: "test_refund",
+            idempotencyKey,
+            testId: test._id,
+            note: "No usable panel responses",
+            createdAt: now,
+          });
+          await ctx.db.patch(user._id, { balanceCents, updatedAt: now });
+        }
+      }
+    }
     await ctx.db.patch(test._id, { status, completedAt: test.completedAt ?? Date.now(), synthesisLeaseToken: undefined, synthesisLeaseExpiresAt: undefined });
   },
 });

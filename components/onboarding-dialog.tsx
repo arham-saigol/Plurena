@@ -32,14 +32,17 @@ export function OnboardingDialog() {
   const submit = async () => {
     if (!selectedGoals.length || !selectedPlans.length) { setError("Choose at least one answer for each question."); return; }
     setBusy(true); setError("");
-    try { await complete({ goals: selectedGoals, integrationPlans: selectedPlans }); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save your answers."); setBusy(false); }
+    try { await complete({ goals: selectedGoals, integrationPlans: selectedPlans }); } catch (cause) {
+      setError(cause instanceof Error && cause.message.includes("PROMOTION_DAILY_LIMIT_REACHED") ? "Today’s welcome-credit limit has been reached. Try again tomorrow." : "Could not save your answers.");
+      setBusy(false);
+    }
   };
   return <div className="dialog-backdrop onboarding-backdrop"><section ref={dialogRef} className="dialog onboarding-dialog" role="dialog" aria-modal="true" aria-label="Claim onboarding credit">
     <div className="gift-mark"><Gift size={20} weight="fill" /></div><p className="eyebrow">$6 welcome credit</p><h2>Tell us how you plan to use Plurena.</h2><p className="muted">Answer both questions to claim enough credit for your first 20-person test.</p>
     <Question title="What are you hoping to do?" items={goals} selected={selectedGoals} onToggle={(value) => toggle(value, setSelectedGoals)} />
     <Question title="How do you expect to use the results?" items={plans} selected={selectedPlans} onToggle={(value) => toggle(value, setSelectedPlans)} />
     {error && <p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={busy} onClick={submit}>{busy ? "Saving…" : "Claim $6 credit"}</button>
-    <p className="fine-print">Plurena awards this credit once per account.</p>
+    <p className="fine-print">Plurena awards this credit once per account, subject to daily availability.</p>
   </section></div>;
 }
 

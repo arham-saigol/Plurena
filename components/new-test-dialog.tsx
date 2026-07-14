@@ -20,11 +20,20 @@ const genderValues = ["female", "mixed", "male"] as const;
 
 export function NewTestDialog({ pricing, balanceCents, onClose, seed }: { pricing: Pricing; balanceCents: number; onClose(): void; seed?: RerunSeed }) {
   const router = useRouter();
-  const dialogRef = useDialogA11y(onClose);
   const launch = useMutation(api.tests.launch);
-  const storeImage = useAction(api.files.storeImage);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const finalizeImage = useAction(api.files.finalizeImage);
+  const discardAsset = useMutation(api.files.discardAsset);
   const saveAudience = useMutation(api.audiences.save);
+  const removeAudience = useMutation(api.audiences.remove);
   const savedAudiences = useQuery(api.audiences.list, {});
+  const uploadedAssetIds = useRef(new Set<Id<"assets">>());
+  const close = () => {
+    for (const assetId of uploadedAssetIds.current) void discardAsset({ assetId }).catch(() => undefined);
+    uploadedAssetIds.current.clear();
+    onClose();
+  };
+  const dialogRef = useDialogA11y(close);
   const [step, setStep] = useState(seed ? 1 : 0);
   const [clientRequestId] = useState(() => crypto.randomUUID());
   const [testType, setTestType] = useState<"compare" | "question">(seed?.testType ?? "compare");
@@ -36,6 +45,7 @@ export function NewTestDialog({ pricing, balanceCents, onClose, seed }: { pricin
   const initialIndex = Math.max(0, pricing.panels.findIndex((item) => item.size === (seed?.panelSize ?? 20)));
   const [panelIndex, setPanelIndex] = useState(initialIndex);
   const [saveName, setSaveName] = useState("");
+  const [selectedAudienceId, setSelectedAudienceId] = useState<Id<"savedAudiences"> | "">("");
   const [reusePanel, setReusePanel] = useState(Boolean(seed?.reusePanel));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -51,14 +61,32 @@ export function NewTestDialog({ pricing, balanceCents, onClose, seed }: { pricin
   };
   const updateOption = (index: number, patch: Partial<OptionDraft>) => setOptions((current) => current.map((item, position) => position === index ? { ...item, ...patch } : item));
   const addOption = () => options.length < 5 && setOptions((current) => [...current, makeOption(String.fromCharCode(65 + current.length))]);
-  const removeOption = (index: number) => options.length > 2 && setOptions((current) => current.filter((_, position) => position !== index));
+  const discardDraftAsset = (assetId?: Id<"assets">) => {
+    if (!assetId || !uploadedAssetIds.current.delete(assetId)) return;
+    void discardAsset({ assetId }).catch(() => undefined);
+  };
+  const removeOption = (index: number) => {
+    discardDraftAsset(options[index]?.assetId);
+    setOptions((current) => current.filter((_, position) => position !== index));
+  };
+  const selectTextOption = (index: number) => {
+    discardDraftAsset(options[index]?.assetId);
+    updateOption(index, { optionType: "text", assetId: undefined, fileName: undefined });
+  };
   const upload = async (index: number, file?: File) => {
     if (!file) return;
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { setError("Use a PNG, JPEG, or WebP image."); return; }
     if (file.size > 8 * 1024 * 1024) { setError("Images must be 8 MB or smaller."); return; }
     setBusy(true); setError("");
     try {
-      const assetId = await storeImage({ bytes: await file.arrayBuffer(), contentType: file.type });
+      const grant = await generateUploadUrl({});
+      const response = await fetch(grant.uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      if (!response.ok) throw new Error("UPLOAD_FAILED");
+      const payload = await response.json() as { storageId?: Id<"_storage"> };
+      if (!payload.storageId) throw new Error("UPLOAD_FAILED");
+      const assetId = await finalizeImage({ storageId: payload.storageId, uploadGrantId: grant.uploadGrantId });
+      discardDraftAsset(options[index]?.assetId);
+      uploadedAssetIds.current.add(assetId);
       updateOption(index, { assetId, fileName: file.name, optionType: "image", text: "" });
     } catch (cause) { setError(readError(cause, "Image upload failed.")); } finally { setBusy(false); }
   };
@@ -66,6 +94,13 @@ export function NewTestDialog({ pricing, balanceCents, onClose, seed }: { pricin
     if (!saveName.trim()) { setError("Name this audience first."); return; }
     setBusy(true); setError("");
     try { await saveAudience({ name: saveName, criteria: { ...audience, name: saveName } }); setSaveName(""); } catch (cause) { setError(readError(cause, "Audience could not be saved.")); } finally { setBusy(false); }
+  };
+  const deleteAudience = async () => {
+    if (!selectedAudienceId) return;
+    setBusy(true); setError("");
+    try { await removeAudience({ audienceId: selectedAudienceId }); setSelectedAudienceId(""); }
+    catch (cause) { setError(readError(cause, "Audience could not be removed.")); }
+    finally { setBusy(false); }
   };
   const submit = async () => {
     if (balanceCents < quote.priceCents) { setError(`You need ${money(quote.priceCents - balanceCents)} more credit to launch.`); return; }
@@ -81,17 +116,18 @@ export function NewTestDialog({ pricing, balanceCents, onClose, seed }: { pricin
         rerunOf: seed?.testId,
         reusePanel: seed ? reusePanel : false,
       });
+      uploadedAssetIds.current.clear();
       router.push(`/tests/${result.testId}`);
     } catch (cause) { setError(readError(cause, "The test could not launch.")); setBusy(false); }
   };
 
   return <div className="dialog-backdrop"><section ref={dialogRef} className="dialog test-dialog" role="dialog" aria-modal="true" aria-label={seed ? "Rerun test" : "New test"}>
-    <div className="dialog-title"><div><p className="eyebrow">{seed ? "Rerun" : "New test"}</p><h2>{steps[step]}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={17} /></button></div>
+    <div className="dialog-title"><div><p className="eyebrow">{seed ? "Rerun" : "New test"}</p><h2>{steps[step]}</h2></div><button className="icon-button" onClick={close} aria-label="Close"><X size={17} /></button></div>
     <ol className="stepper">{steps.map((label, index) => <li key={label} className={index === step ? "active" : index < step ? "done" : ""}><span>{index < step ? <Check size={11} weight="bold" /> : index + 1}</span><b>{label}</b></li>)}</ol>
     <div className="dialog-content">
       {step === 0 && <TypeStep value={testType} onChange={chooseType} />}
-      {step === 1 && <ContentStep testType={testType} title={title} setTitle={setTitle} options={options} setOptions={setOptions} updateOption={updateOption} addOption={addOption} removeOption={removeOption} upload={upload} busy={busy} />}
-      {step === 2 && <AudienceStep audience={audience} setAudience={setAudience} saved={savedAudiences ?? []} saveName={saveName} setSaveName={setSaveName} save={storeAudience} />}
+      {step === 1 && <ContentStep testType={testType} title={title} setTitle={setTitle} options={options} setOptions={setOptions} updateOption={updateOption} selectTextOption={selectTextOption} addOption={addOption} removeOption={removeOption} upload={upload} busy={busy} />}
+      {step === 2 && <AudienceStep audience={audience} setAudience={setAudience} saved={savedAudiences ?? []} selectedId={selectedAudienceId} setSelectedId={setSelectedAudienceId} saveName={saveName} setSaveName={setSaveName} save={storeAudience} remove={deleteAudience} busy={busy} />}
       {step === 3 && <PanelStep pricing={pricing} panelIndex={panelIndex} setPanelIndex={setPanelIndex} locked={Boolean(seed && reusePanel)} />}
       {step === 4 && <ReviewStep testType={testType} title={title} options={options} audience={audience} quote={quote} balanceCents={balanceCents} seed={seed} reusePanel={reusePanel} setReusePanel={(value: boolean) => { setReusePanel(value); if (value && seed) setPanelIndex(initialIndex); }} />}
     </div>
@@ -113,16 +149,17 @@ interface ContentStepProps {
   options: OptionDraft[];
   setOptions: Dispatch<SetStateAction<OptionDraft[]>>;
   updateOption(index: number, patch: Partial<OptionDraft>): void;
+  selectTextOption(index: number): void;
   addOption(): void;
   removeOption(index: number): void;
   upload(index: number, file?: File): Promise<void>;
   busy: boolean;
 }
 
-function ContentStep({ testType, title, setTitle, options, setOptions, updateOption, addOption, removeOption, upload, busy }: ContentStepProps) {
+function ContentStep({ testType, title, setTitle, options, setOptions, updateOption, selectTextOption, addOption, removeOption, upload, busy }: ContentStepProps) {
   return <div className="form-stack"><label className="field"><span>{testType === "compare" ? "Header question" : "Question"}</span><textarea rows={2} value={title} onChange={(event) => setTitle(event.target.value)} placeholder={testType === "compare" ? "Which option makes you most likely to buy?" : "What would make you switch from your current product?"} /><small>{title.length}/300</small></label>
     {testType === "question" && options.length === 0 && <button className="button secondary align-left" onClick={() => setOptions([makeOption("context")])}><Plus size={15} /> Add supporting text or image</button>}
-    {options.map((option: OptionDraft, index: number) => <div className="option-editor" key={option.key}><div className="option-head"><input value={option.label} onChange={(event) => updateOption(index, { label: event.target.value })} aria-label={`Option ${index + 1} label`} />{testType === "compare" && options.length > 2 && <button className="icon-button" onClick={() => removeOption(index)} aria-label="Remove option"><Trash size={15} /></button>}{testType === "question" && <button className="icon-button" onClick={() => setOptions([])} aria-label="Remove context"><Trash size={15} /></button>}</div><div className="content-kind"><button className={option.optionType === "text" ? "active" : ""} onClick={() => updateOption(index, { optionType: "text", assetId: undefined, fileName: undefined })}><TextT size={14} /> Text</button><label className={option.optionType === "image" ? "active" : ""}><UploadSimple size={14} /> Image<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => upload(index, event.target.files?.[0])} /></label></div>{option.optionType === "text" ? <textarea rows={4} value={option.text} onChange={(event) => updateOption(index, { text: event.target.value })} placeholder="Paste the copy or concept to test" /> : <div className={option.assetId ? "upload-zone uploaded" : "upload-zone"}><ImageIcon size={20} /><span>{option.fileName ?? "Choose a PNG, JPEG, or WebP image"}</span><small>8 MB maximum</small></div>}</div>)}
+    {options.map((option: OptionDraft, index: number) => <div className="option-editor" key={option.key}><div className="option-head"><input value={option.label} onChange={(event) => updateOption(index, { label: event.target.value })} aria-label={`Option ${index + 1} label`} />{testType === "compare" && options.length > 2 && <button className="icon-button" onClick={() => removeOption(index)} aria-label="Remove option"><Trash size={15} /></button>}{testType === "question" && <button className="icon-button" onClick={() => removeOption(index)} aria-label="Remove context"><Trash size={15} /></button>}</div><div className="content-kind"><button className={option.optionType === "text" ? "active" : ""} onClick={() => selectTextOption(index)}><TextT size={14} /> Text</button><label className={option.optionType === "image" ? "active" : ""}><UploadSimple size={14} /> Image<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => upload(index, event.target.files?.[0])} /></label></div>{option.optionType === "text" ? <textarea rows={4} value={option.text} onChange={(event) => updateOption(index, { text: event.target.value })} placeholder="Paste the copy or concept to test" /> : <div className={option.assetId ? "upload-zone uploaded" : "upload-zone"}><ImageIcon size={20} /><span>{option.fileName ?? "Choose a PNG, JPEG, or WebP image"}</span><small>8 MB maximum</small></div>}</div>)}
     {testType === "compare" && options.length < 5 && <button className="button secondary align-left" onClick={addOption}><Plus size={15} /> Add option</button>}
   </div>;
 }
@@ -131,14 +168,18 @@ interface AudienceStepProps {
   audience: Audience;
   setAudience: Dispatch<SetStateAction<Audience>>;
   saved: Doc<"savedAudiences">[];
+  selectedId: Id<"savedAudiences"> | "";
+  setSelectedId(value: Id<"savedAudiences"> | ""): void;
   saveName: string;
   setSaveName: Dispatch<SetStateAction<string>>;
   save(): Promise<void>;
+  remove(): Promise<void>;
+  busy: boolean;
 }
 
-function AudienceStep({ audience, setAudience, saved, saveName, setSaveName, save }: AudienceStepProps) {
+function AudienceStep({ audience, setAudience, saved, selectedId, setSelectedId, saveName, setSaveName, save, remove, busy }: AudienceStepProps) {
   const genderIndex = audience.gender === "female" ? 0 : audience.gender === "mixed" ? 1 : 2;
-  return <div className="form-stack">{saved.length > 0 && <label className="field"><span>Saved audience</span><select defaultValue="" onChange={(event) => { const match = saved.find((item) => item._id === event.target.value); if (match) setAudience(match.criteria); }}><option value="">Choose saved criteria</option>{saved.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select></label>}
+  return <div className="form-stack">{saved.length > 0 && <div className="saved-audience-picker"><label className="field"><span>Saved audience</span><select value={selectedId} onChange={(event) => { const nextId = event.target.value as Id<"savedAudiences"> | ""; setSelectedId(nextId); const match = saved.find((item) => item._id === nextId); if (match) setAudience(match.criteria); }}><option value="">Choose saved criteria</option>{saved.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select></label><button className="button secondary" disabled={!selectedId || busy} onClick={remove}><Trash size={14} /> Remove</button></div>}
     <label className="field"><span>Target locations</span><input value={audience.locations.join(", ")} onChange={(event) => setAudience({ ...audience, locations: event.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} placeholder="United States, Canada" /><small>Separate locations with commas.</small></label>
     <label className="field"><span>Persona description</span><textarea rows={3} value={audience.description} onChange={(event) => setAudience({ ...audience, description: event.target.value })} placeholder="Amazon buyers interested in home coffee equipment who compare reviews before buying" /></label>
     <div className="range-field"><div><span>Gender mix</span><b>{genderLabels[genderIndex]}</b></div><input type="range" aria-label="Gender mix" aria-valuetext={genderLabels[genderIndex]} min="0" max="2" step="1" value={genderIndex} onChange={(event) => setAudience({ ...audience, gender: genderValues[Number(event.target.value)] })} /><div className="range-labels"><span>Female</span><span>Mixed</span><span>Male</span></div></div>

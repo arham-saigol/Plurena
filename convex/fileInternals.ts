@@ -19,25 +19,27 @@ export const beginUpload = internalMutation({
     const assets = await ctx.db.query("assets").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_STORED_ASSETS);
     if (assets.length >= MAX_STORED_ASSETS) throw new Error("ASSET_LIMIT_REACHED");
     const uploadGrantId = await ctx.db.insert("uploadGrants", { userId: user._id, status: "issued", createdAt: Date.now() });
-    return { userId: user._id, uploadGrantId };
+    return uploadGrantId;
   },
 });
 
 export const finalizeUpload = internalMutation({
   args: {
-    userId: v.id("users"),
+    clerkId: v.string(),
     uploadGrantId: v.id("uploadGrants"),
     storageId: v.id("_storage"),
     contentType: v.string(),
     size: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId)).unique();
+    if (!user) throw new Error("USER_NOT_INITIALIZED");
     const grant = await ctx.db.get(args.uploadGrantId);
-    if (!grant || grant.userId !== args.userId || grant.status !== "issued") throw new Error("INVALID_UPLOAD_GRANT");
-    const assets = await ctx.db.query("assets").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(MAX_STORED_ASSETS);
+    if (!grant || grant.userId !== user._id || grant.status !== "issued") throw new Error("INVALID_UPLOAD_GRANT");
+    const assets = await ctx.db.query("assets").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_STORED_ASSETS);
     if (assets.length >= MAX_STORED_ASSETS) throw new Error("ASSET_LIMIT_REACHED");
     const assetId = await ctx.db.insert("assets", {
-      userId: args.userId,
+      userId: user._id,
       storageId: args.storageId,
       uploadGrantId: args.uploadGrantId,
       contentType: args.contentType,
@@ -46,6 +48,30 @@ export const finalizeUpload = internalMutation({
     });
     await ctx.db.patch(grant._id, { status: "registered", registeredAt: Date.now() });
     return assetId;
+  },
+});
+
+export const cleanupUnusedAssets = internalMutation({
+  args: { cursor: v.optional(v.string()), cutoff: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<{ scanned: number; deleted: number; continued: boolean }> => {
+    const cutoff = args.cutoff ?? Date.now() - ORPHANED_STORAGE_GRACE_MS;
+    const page = await ctx.db.query("assets").withIndex("by_created", (q) => q.lt("createdAt", cutoff)).paginate({
+      cursor: args.cursor ?? null,
+      numItems: CLEANUP_BATCH_SIZE,
+    });
+    let deleted = 0;
+    for (const asset of page.page) {
+      const reference = await ctx.db.query("options").withIndex("by_storage", (q) => q.eq("storageId", asset.storageId)).first();
+      if (!reference) {
+        await ctx.storage.delete(asset.storageId);
+        await ctx.db.delete(asset._id);
+        deleted += 1;
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.fileInternals.cleanupUnusedAssets, { cursor: page.continueCursor, cutoff });
+    }
+    return { scanned: page.page.length, deleted, continued: !page.isDone };
   },
 });
 

@@ -48,6 +48,8 @@ On PowerShell, use `Copy-Item .env.example .env.local`.
 ```dotenv
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SIGNING_SECRET=
+CLERK_WEBHOOK_FORWARD_SECRET=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
@@ -55,6 +57,7 @@ NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
 ```
 
 The app uses one Clerk `<SignIn>` surface for new and returning Google users.
+Register `https://your-public-host/api/webhooks/clerk` for Clerk's `user.deleted` event. Use the endpoint signing secret for `CLERK_WEBHOOK_SIGNING_SECRET`, and set the same random `CLERK_WEBHOOK_FORWARD_SECRET` in Vercel and the Convex deployment. Verified deletion events schedule an idempotent, batched erasure of the user row, research data, billing rows, and stored files; a five-minute cron resumes interrupted jobs.
 
 ### 3. Configure Convex
 
@@ -69,6 +72,7 @@ Copy the issuer from the Clerk `convex` JWT template, then set the Convex enviro
 ```bash
 npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer
 npx convex env set PAYMENT_WEBHOOK_FORWARD_SECRET replace-with-a-long-random-value
+npx convex env set CLERK_WEBHOOK_FORWARD_SECRET replace-with-another-long-random-value
 npx convex env set OPENROUTER_API_KEY your-key
 npx convex env set OPENROUTER_SITE_URL http://localhost:3000
 npx convex env set OPENROUTER_APP_NAME Plurena
@@ -134,6 +138,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_APP_URL` | Vercel/browser | Yes | Canonical origin and Creem return URL |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel/browser | Yes | Clerk frontend key |
 | `CLERK_SECRET_KEY` | Vercel | Yes | Clerk server key |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Vercel | Yes | Verifies Clerk lifecycle webhooks |
+| `CLERK_WEBHOOK_FORWARD_SECRET` | Vercel + Convex | Yes | Authenticates deletion requests forwarded to Convex |
 | `NEXT_PUBLIC_CONVEX_URL` | Vercel/browser | Yes | Convex deployment URL |
 | `CONVEX_DEPLOYMENT` | Local CLI | Local | Selected Convex deployment |
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex | Yes | Clerk issuer for the `convex` JWT template |
@@ -162,8 +168,9 @@ Keep provider, Clerk secret, Creem, and webhook keys out of `NEXT_PUBLIC_*` vari
 5. Deploy. Vercel detects Next.js automatically.
 6. Add the production domain to Clerk and provider allowlists.
 7. Register `https://your-domain/api/webhooks/creem` in Creem live mode.
-8. Run one $10 payment, replay its signed event, and confirm one `payments` row, one positive `creditLedger` row, and one balance increase.
-9. Launch a 20-person staging test. Confirm live counts, at least one stored model attempt, aggregation, synthesis, same-panel rerun, Markdown copy, and PDF export.
+8. Register `https://your-domain/api/webhooks/clerk` for Clerk `user.deleted` events and test one deletion.
+9. Run one $10 payment, replay its signed event, and confirm one `payments` row, one positive `creditLedger` row, and one balance increase.
+10. Launch a 20-person staging test. Confirm live counts, at least one stored model attempt, aggregation, synthesis, same-panel rerun, Markdown copy, and PDF export.
 
 Vercel environment changes apply to new deployments, so redeploy after changing a key.
 
@@ -200,4 +207,4 @@ Live Clerk, Creem, and AI-provider end-to-end tests still require sandbox creden
 - Verify Creem's current `checkout.completed` payload in test mode against the pinned request validator before taking live payments. Creem's SDK and webhook payloads have changed over time.
 - AI respondents can make mistakes. Plurena keeps provider identity, disagreement, failed assignments, and None-of-the-above responses visible so researchers can judge the evidence.
 - Confirm provider data-processing terms, retention controls, and spend caps. Plurena discloses in the launch review that OpenCode Go or OpenRouter fallbacks receive study material and persona context.
-- Treat the $6 promotion as an abuse-sensitive launch surface. Configure Clerk bot protection and provider hard spend limits, then monitor account and launch velocity.
+- The $6 promotion is atomic per account and capped globally at 20 claims/$120 per UTC day. Keep Clerk bot protection and provider hard spend limits enabled, and monitor account and launch velocity.

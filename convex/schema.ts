@@ -23,6 +23,20 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]).index("by_token", ["tokenIdentifier"]),
 
+  accountDeletionRequests: defineTable({
+    clerkId: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_clerk_id", ["clerkId"]),
+
+  promotionDailyUsage: defineTable({
+    day: v.string(),
+    claimCount: v.number(),
+    amountCents: v.number(),
+    updatedAt: v.number(),
+  }).index("by_day", ["day"]),
+
   onboardingAnswers: defineTable({
     userId: v.id("users"),
     goals: v.array(v.string()),
@@ -93,7 +107,7 @@ export default defineSchema({
     contentType: v.string(),
     size: v.number(),
     createdAt: v.number(),
-  }).index("by_user", ["userId"]).index("by_storage", ["storageId"]),
+  }).index("by_user", ["userId"]).index("by_storage", ["storageId"]).index("by_created", ["createdAt"]),
 
   tests: defineTable({
     userId: v.id("users"),
@@ -138,7 +152,7 @@ export default defineSchema({
     text: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
     position: v.number(),
-  }).index("by_test", ["testId"]),
+  }).index("by_test", ["testId"]).index("by_storage", ["storageId"]).index("by_user", ["userId"]),
 
   personas: defineTable({
     testId: v.id("tests"),
@@ -152,7 +166,7 @@ export default defineSchema({
     constraints: v.array(v.string()),
     pointOfView: v.string(),
     sourcePersonaId: v.optional(v.id("personas")),
-  }).index("by_test", ["testId"]),
+  }).index("by_test", ["testId"]).index("by_user", ["userId"]),
 
   assignments: defineTable({
     testId: v.id("tests"),
@@ -169,6 +183,7 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_test", ["testId"])
+    .index("by_user", ["userId"])
     .index("by_test_status", ["testId", "status"])
     .index("by_status_created", ["status", "createdAt"])
     .index("by_status_lease", ["status", "leaseExpiresAt"]),
@@ -188,7 +203,7 @@ export default defineSchema({
     estimatedCostUsd: v.optional(v.number()),
     latencyMs: v.number(),
     createdAt: v.number(),
-  }).index("by_test", ["testId"]).index("by_assignment", ["assignmentId"]),
+  }).index("by_test", ["testId"]).index("by_assignment", ["assignmentId"]).index("by_user", ["userId"]),
 
   modelAttempts: defineTable({
     testId: v.id("tests"),
@@ -228,7 +243,7 @@ export default defineSchema({
     data: v.any(),
     responseCount: v.number(),
     generatedAt: v.number(),
-  }).index("by_test", ["testId"]),
+  }).index("by_test", ["testId"]).index("by_user", ["userId"]),
 
   syntheses: defineTable({
     testId: v.id("tests"),
@@ -251,5 +266,5 @@ export default defineSchema({
     evidenceResponseCount: v.optional(v.number()),
     omittedResponseCount: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_test", ["testId"]),
+  }).index("by_test", ["testId"]).index("by_user", ["userId"]),
 });
