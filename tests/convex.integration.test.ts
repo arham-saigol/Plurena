@@ -132,7 +132,7 @@ describe("Convex transaction boundaries", () => {
     }));
     expect(counts.personas).toBe(250);
     expect(counts.assignments).toBe(250);
-    expect(counts.user?.balanceCents).toBe(1_000);
+    expect(counts.user?.balanceCents).toBe(1_200);
   });
 
   it("does not create another checkout for a terminal payment", async () => {

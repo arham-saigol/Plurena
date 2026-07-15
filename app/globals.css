@@ -254,7 +254,7 @@ h1, h2, h3, p { margin-top: 0; }
 .panel-quote strong { margin: 5px 0; font-size: 37px; letter-spacing: -.04em; }
 .panel-quote small { color: var(--success); font-size: 10px; }
 .panel-slider { display: block; }
-.panel-stops { margin-top: 14px; display: grid; grid-template-columns: repeat(8, 1fr); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.panel-stops { margin-top: 14px; display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
 .panel-stops button { min-width: 0; padding: 10px 2px; background: transparent; border: 0; border-right: 1px solid var(--line); }
 .panel-stops button:last-child { border: 0; }
 .panel-stops button:hover, .panel-stops button.active { background: var(--surface-2); }
@@ -448,9 +448,7 @@ h1, h2, h3, p { margin-top: 0; }
   .type-grid { grid-template-columns: 1fr; }
   .type-card { min-height: 145px; }
   .type-card svg { margin: 0 0 18px; }
-  .panel-stops { grid-template-columns: repeat(4, 1fr); }
-  .panel-stops button:nth-child(4) { border-right: 0; }
-  .panel-stops button:nth-child(-n+4) { border-bottom: 1px solid var(--line); }
+  .panel-stops { grid-template-columns: repeat(5, 1fr); }
   .onboarding-dialog { max-height: 100vh; border-radius: 0; }
   .onboarding-question { grid-template-columns: 1fr; }
   .details-top { align-items: center; }
