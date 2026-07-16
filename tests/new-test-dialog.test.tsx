@@ -41,6 +41,21 @@ describe("test creation dialog", () => {
     expect(screen.getAllByLabelText(/Option \d label/)).toHaveLength(2);
   });
 
+  it("keeps a typed location separator so multiple locations can be entered", () => {
+    render(<NewTestDialog pricing={pricing} balanceCents={2_000} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.change(screen.getByLabelText("Header question"), { target: { value: "Which option wins?" } });
+    for (const option of screen.getAllByPlaceholderText("Paste the copy or concept to test")) {
+      fireEvent.change(option, { target: { value: "Option content" } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+
+    const locations = screen.getByLabelText("Target locations");
+    fireEvent.change(locations, { target: { value: "United States," } });
+    expect(locations).toHaveValue("United States, ");
+  });
+
   it("renders one gender thumb and distinctly labels both age thumbs", () => {
     render(<NewTestDialog pricing={pricing} balanceCents={2_000} onClose={vi.fn()} />);
 

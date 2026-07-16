@@ -4,12 +4,14 @@ import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, ChartBar, ChatText, Faders, Plus, WarningCircle } from "@phosphor-icons/react";
+import { ArrowRight, ChartBar, ChatText, CheckCircle, Faders, Plus, WarningCircle } from "@phosphor-icons/react";
 import { AppHeader } from "@/components/app-header";
 import { NewTestDialog } from "@/components/new-test-dialog";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { money, percent, timeAgo } from "@/lib/format";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +31,7 @@ export function Dashboard() {
     { initialNumItems: 50 },
   );
   const [newTest, setNewTest] = useState(false);
+  const paymentProcessing = useSearchParams()?.get("payment") === "processing";
   const [renderedAt] = useState(() => Date.now());
   const ready = Boolean(me?.onboardingClaimedAt);
 
@@ -43,13 +46,15 @@ export function Dashboard() {
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Launch a focused study and follow every response from one calm workspace.</p>
           </div>
           <Button
-            className="h-10 w-full rounded-lg bg-foreground px-4 text-background shadow-sm hover:bg-foreground/90 sm:w-auto"
+            className="h-10 w-full px-4 shadow-[0_4px_12px_rgba(5,98,239,0.18)] sm:w-auto"
             onClick={() => setNewTest(true)}
             disabled={!ready}
           >
             <Plus size={16} weight="bold" /> New test
           </Button>
         </section>
+
+        {paymentProcessing && <Alert className="mt-8 border-primary/15 bg-primary/5 text-foreground" role="status"><CheckCircle className="text-primary" /><AlertTitle>Payment received</AlertTitle><AlertDescription>Your balance will update as soon as checkout confirmation arrives. This usually takes a few seconds.</AlertDescription></Alert>}
 
         <section className="mt-12" aria-labelledby="test-history-heading">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +67,9 @@ export function Dashboard() {
               </NativeSelect>
               <NativeSelect className="w-full sm:w-40" aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
                 <NativeSelectOption value="all">All statuses</NativeSelectOption>
+                <NativeSelectOption value="queued">Queued</NativeSelectOption>
                 <NativeSelectOption value="running">Running</NativeSelectOption>
+                <NativeSelectOption value="synthesizing">Synthesizing</NativeSelectOption>
                 <NativeSelectOption value="completed">Completed</NativeSelectOption>
                 <NativeSelectOption value="partial">Partial</NativeSelectOption>
                 <NativeSelectOption value="failed">Failed</NativeSelectOption>
@@ -180,7 +187,7 @@ function EmptyState({ onCreate, ready, filtered, onClear }: { onCreate(): void; 
       {filtered ? (
         <Button className="mt-5" variant="outline" onClick={onClear}>Clear filters</Button>
       ) : ready ? (
-        <Button className="mt-5 bg-foreground text-background hover:bg-foreground/90" onClick={onCreate}><Plus size={15} /> New test</Button>
+        <Button className="mt-5" onClick={onCreate}><Plus size={15} /> New test</Button>
       ) : null}
     </div>
   );
