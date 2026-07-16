@@ -25,6 +25,13 @@ describe("account action disclosure", () => {
     const trigger = screen.getByRole("button", { name: "Account actions" });
     expect(trigger).toHaveClass("account-trigger");
     expect(trigger.querySelector('[data-slot="avatar"]')).toHaveClass("account-avatar");
+    expect(trigger.querySelector("svg")).not.toBeInTheDocument();
+    const header = trigger.closest("header");
+    expect(header).not.toHaveClass("border-b");
+    expect(header?.firstElementChild).toHaveClass("w-full");
+    expect(header?.firstElementChild).not.toHaveClass("max-w-6xl");
+    expect(screen.queryByText("Tests")).not.toBeInTheDocument();
+    expect(header?.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("group", { name: "Account actions" })).toBeInTheDocument();

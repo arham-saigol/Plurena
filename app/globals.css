@@ -173,9 +173,9 @@ h1, h2, h3, p { margin-top: 0; }
 
 /* App shell and header */
 .app-shell { min-height: 100vh; }
-.app-header { height: 58px; padding: 0 max(24px, calc((100vw - 1120px) / 2)); display: flex; align-items: center; justify-content: space-between; position: sticky; z-index: 30; top: 0; background: color-mix(in srgb, var(--canvas) 96%, transparent); border-bottom: 1px solid var(--line); }
+.app-header { height: 58px; display: flex; align-items: center; justify-content: space-between; position: sticky; z-index: 30; top: 0; background: color-mix(in srgb, var(--canvas) 96%, transparent); }
 .header-actions { min-width: 0; height: 100%; display: flex; align-items: center; gap: 6px; }
-.account-trigger { width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 32px !important; padding: 4px !important; gap: 4px !important; overflow: hidden !important; }
+.account-trigger { width: 32px !important; min-width: 32px !important; max-width: 32px !important; height: 32px !important; padding: 4px !important; overflow: hidden !important; }
 .account-trigger [data-slot="avatar"], .account-avatar { width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; min-height: 24px !important; max-height: 24px !important; flex: 0 0 24px !important; overflow: hidden !important; }
 .account-trigger [data-slot="avatar-image"], .account-trigger img { display: block !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; min-height: 24px !important; max-height: 24px !important; object-fit: cover !important; }
 .account-menu-content { width: 240px !important; max-width: calc(100vw - 16px) !important; }
@@ -441,7 +441,6 @@ h1, h2, h3, p { margin-top: 0; }
   .plain-section, .pricing-section { padding-top: 70px; padding-bottom: 70px; }
   .price-row { grid-template-columns: 1fr 65px 80px; }
   .auth-shell { flex-direction: column; gap: 30px; align-items: stretch; }
-  .app-header { padding-inline: 15px; }
   .dashboard-main, .details-main { width: calc(100% - 24px); padding-top: 35px; }
   .page-heading { align-items: flex-start; }
   .page-heading .muted { display: none; }

@@ -4,7 +4,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
-import { CaretDown, Gear, Moon, Plus, SignOut, Sun, Wallet } from "@phosphor-icons/react";
+import { Gear, Moon, Plus, SignOut, Sun, Wallet } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { money, timeAgo } from "@/lib/format";
@@ -54,9 +54,9 @@ export function AppHeader() {
   };
 
   return <>
-    <header className="app-header sticky top-0 z-30 h-[60px] border-b bg-background/90 backdrop-blur-xl"><div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-5 sm:px-8"><div className="flex items-center gap-3"><Link href="/dashboard" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"><Brand /></Link><span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" /><Button className="hidden h-8 text-xs text-muted-foreground sm:inline-flex" variant="ghost" nativeButton={false} render={<Link href="/dashboard" />}>Tests</Button></div><div className="flex items-center gap-1.5">
+    <header className="app-header sticky top-0 z-30 h-[60px] bg-background/90 backdrop-blur-xl"><div className="flex h-full w-full items-center justify-between px-5 sm:px-8"><div className="flex items-center"><Link href="/dashboard" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"><Brand /></Link></div><div className="flex items-center gap-1.5">
       <Button className="h-8 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground" variant="ghost" onClick={() => setBilling(true)}><Wallet size={15} /><span className="hidden sm:inline">Balance</span><span className="font-medium tabular-nums text-foreground">{me ? money(me.balanceCents) : "…"}</span></Button>
-      <DropdownMenu open={menu} onOpenChange={setMenu}><DropdownMenuTrigger render={<Button ref={avatarRef} variant="ghost" className="account-trigger h-8 w-11 min-w-11 rounded-lg p-1" aria-label="Account actions" title="Account menu" />}><Avatar size="sm" className="account-avatar"><AvatarImage src={user?.imageUrl ?? ""} alt="" width={24} height={24} /><AvatarFallback>{user?.firstName?.slice(0, 1) ?? "P"}</AvatarFallback></Avatar><CaretDown className="shrink-0 text-muted-foreground" size={12} /></DropdownMenuTrigger><DropdownMenuContent align="end" className="account-menu-content w-60"><span role="group" aria-label="Account actions" className="contents">
+      <DropdownMenu open={menu} onOpenChange={setMenu}><DropdownMenuTrigger render={<Button ref={avatarRef} variant="ghost" className="account-trigger h-8 w-8 min-w-8 rounded-lg p-1" aria-label="Account actions" title="Account menu" />}><Avatar size="sm" className="account-avatar"><AvatarImage src={user?.imageUrl ?? ""} alt="" width={24} height={24} /><AvatarFallback>{user?.firstName?.slice(0, 1) ?? "P"}</AvatarFallback></Avatar></DropdownMenuTrigger><DropdownMenuContent align="end" className="account-menu-content w-60"><span role="group" aria-label="Account actions" className="contents">
         <DropdownMenuGroup><DropdownMenuLabel><strong className="block text-foreground">{user?.fullName ?? "Your account"}</strong><span className="block truncate font-normal">{user?.primaryEmailAddress?.emailAddress}</span></DropdownMenuLabel></DropdownMenuGroup><DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => clerk.openUserProfile()}><Gear size={16} /> Settings</DropdownMenuItem>
         <DropdownMenuItem onClick={toggleTheme}>{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
