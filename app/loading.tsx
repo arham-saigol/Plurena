@@ -1,1 +1,2 @@
-export default function Loading() { return <main className="center-page"><div className="loading-line" /><p className="muted">Loading Plurena…</p></main>; }
+import { Skeleton } from "@/components/ui/skeleton";
+export default function Loading() { return <main className="center-page"><Skeleton className="h-1 w-40" /><p className="muted">Loading Plurena…</p></main>; }

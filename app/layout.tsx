@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "@/components/providers";
 import "./globals.css";
+import { Geist, Geist_Mono } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: { default: "Plurena", template: "%s · Plurena" },
@@ -19,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={cn("font-sans", geist.variable, geistMono.variable)}>
         <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
         <body><ConvexClientProvider>{children}</ConvexClientProvider></body>
       </html>

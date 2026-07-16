@@ -4,11 +4,14 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
-import { CaretDown, Gear, Moon, Plus, SignOut, Sun, Wallet, X } from "@phosphor-icons/react";
+import { CaretDown, Gear, Moon, Plus, SignOut, Sun, Wallet } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { money, timeAgo } from "@/lib/format";
-import { useDialogA11y } from "@/lib/use-dialog-a11y";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function AppHeader() {
   const { user } = useUser();
@@ -19,7 +22,6 @@ export function AppHeader() {
   const [billing, setBilling] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const initializedUserId = useRef<string | null>(null);
-  const accountRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -34,18 +36,14 @@ export function AppHeader() {
 
   useEffect(() => {
     if (!menu) return;
-    const closeOnPointer = (event: PointerEvent) => {
-      if (!accountRef.current?.contains(event.target as Node)) setMenu(false);
+    const restoreFocus = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenu(false);
+        avatarRef.current?.focus();
+      }
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setMenu(false); avatarRef.current?.focus(); }
-    };
-    document.addEventListener("pointerdown", closeOnPointer);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnPointer);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
+    document.addEventListener("keydown", restoreFocus);
+    return () => document.removeEventListener("keydown", restoreFocus);
   }, [menu]);
 
   const toggleTheme = () => {
@@ -56,21 +54,20 @@ export function AppHeader() {
   };
 
   return <>
-    <header className="app-header"><Link href="/dashboard"><Brand /></Link><div className="header-actions">
-      <button className="balance-button" onClick={() => setBilling(true)}><Wallet size={15} />{me ? money(me.balanceCents) : "…"}</button>
-      <div className="account-wrap" ref={accountRef}><button ref={avatarRef} className="avatar-button" onClick={() => setMenu((value) => !value)} aria-label="Account actions" aria-expanded={menu} aria-controls="account-actions"><img src={user?.imageUrl ?? ""} alt="" /><CaretDown size={12} /></button>{menu && <div className="account-menu" id="account-actions" role="group" aria-label="Account actions">
-        <div className="menu-identity"><strong>{user?.fullName ?? "Your account"}</strong><span>{user?.primaryEmailAddress?.emailAddress}</span></div>
-        <button onClick={() => { clerk.openUserProfile(); setMenu(false); }}><Gear size={16} /> Settings</button>
-        <button onClick={toggleTheme}>{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light mode" : "Dark mode"}</button>
-        <button onClick={() => clerk.signOut({ redirectUrl: "/" })}><SignOut size={16} /> Sign out</button>
-      </div>}</div>
-    </div></header>
+    <header className="sticky top-0 z-30 h-14 border-b bg-background/90 backdrop-blur-xl"><div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-5 sm:px-8"><Link href="/dashboard" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"><Brand /></Link><div className="flex items-center gap-1.5">
+      <Button className="h-8 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground" variant="ghost" onClick={() => setBilling(true)}><Wallet size={15} /><span className="hidden sm:inline">Balance</span><span className="font-medium tabular-nums text-foreground">{me ? money(me.balanceCents) : "…"}</span></Button>
+      <DropdownMenu open={menu} onOpenChange={setMenu}><DropdownMenuTrigger render={<Button ref={avatarRef} variant="ghost" className="account-trigger h-8 w-11 min-w-11 rounded-lg p-1" aria-label="Account actions" title="Account menu" />}><Avatar size="sm" className="account-avatar"><AvatarImage src={user?.imageUrl ?? ""} alt="" width={24} height={24} /><AvatarFallback>{user?.firstName?.slice(0, 1) ?? "P"}</AvatarFallback></Avatar><CaretDown className="shrink-0 text-muted-foreground" size={12} /></DropdownMenuTrigger><DropdownMenuContent align="end" className="account-menu-content w-60"><span role="group" aria-label="Account actions" className="contents">
+        <DropdownMenuGroup><DropdownMenuLabel><strong className="block text-foreground">{user?.fullName ?? "Your account"}</strong><span className="block truncate font-normal">{user?.primaryEmailAddress?.emailAddress}</span></DropdownMenuLabel></DropdownMenuGroup><DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => clerk.openUserProfile()}><Gear size={16} /> Settings</DropdownMenuItem>
+        <DropdownMenuItem onClick={toggleTheme}>{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
+        <DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onClick={() => clerk.signOut({ redirectUrl: "/" })}><SignOut size={16} /> Sign out</DropdownMenuItem>
+      </span></DropdownMenuContent></DropdownMenu>
+    </div></div></header>
     {billing && <BillingDialog balanceCents={me?.balanceCents ?? 0} onClose={() => setBilling(false)} />}
   </>;
 }
 
 function BillingDialog({ balanceCents, onClose }: { balanceCents: number; onClose(): void }) {
-  const dialogRef = useDialogA11y(onClose);
   const ledger = useQuery(api.users.ledger, {});
   const [selected, setSelected] = useState(1_000);
   const [busy, setBusy] = useState(false);
@@ -85,11 +82,11 @@ function BillingDialog({ balanceCents, onClose }: { balanceCents: number; onClos
       location.assign(data.checkoutUrl);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Checkout could not start."); setBusy(false); }
   };
-  return <div className="dialog-backdrop" role="presentation"><section ref={dialogRef} className="dialog billing-dialog" role="dialog" aria-modal="true" aria-label="Billing details">
-    <div className="dialog-title"><div><p className="eyebrow">Billing</p><h2>{money(balanceCents)} available</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={17} /></button></div>
-    <div className="topup-section"><h3>Add balance</h3><p className="muted">One-time payment through Creem. No subscription.</p><div className="amount-options">{[1_000,2_000,5_000,10_000].map((amount) => <button key={amount} className={selected === amount ? "selected" : ""} onClick={() => setSelected(amount)}>{money(amount)}</button>)}</div>{error && <p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={busy} onClick={addBalance}><Plus size={16} /> {busy ? "Opening checkout…" : `Add ${money(selected)}`}</button></div>
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="billing-dialog max-w-md gap-0 overflow-hidden p-0">
+    <DialogHeader className="dialog-title"><p className="eyebrow">Billing</p><DialogTitle>{money(balanceCents)} available</DialogTitle><DialogDescription className="sr-only">Add balance and review recent credit activity.</DialogDescription></DialogHeader>
+    <div className="topup-section"><h3>Add balance</h3><p className="muted">One-time payment through Creem. No subscription.</p><div className="amount-options">{[1_000,2_000,5_000,10_000].map((amount) => <Button key={amount} variant={selected === amount ? "default" : "outline"} onClick={() => setSelected(amount)}>{money(amount)}</Button>)}</div>{error && <p className="form-error" role="alert">{error}</p>}<Button className="w-full" disabled={busy} onClick={addBalance}><Plus size={16} /> {busy ? "Opening checkout…" : `Add ${money(selected)}`}</Button></div>
     <div className="ledger"><h3>Recent activity</h3>{ledger === undefined ? <div className="skeleton-row" /> : ledger.length === 0 ? <p className="muted">No credit activity yet.</p> : ledger.map((entry: any) => <div className="ledger-row" key={entry._id}><div><strong>{ledgerLabel(entry.kind)}</strong><span>{timeAgo(entry.createdAt, renderedAt)}</span></div><b className={entry.amountCents > 0 ? "positive" : ""}>{entry.amountCents > 0 ? "+" : ""}{money(entry.amountCents)}</b></div>)}</div>
-  </section></div>;
+  </DialogContent></Dialog>;
 }
 
 function ledgerLabel(kind: string) {

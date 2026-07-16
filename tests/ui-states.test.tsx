@@ -6,6 +6,10 @@ import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Dashboard } from "@/components/dashboard";
 import { TestDetails } from "@/components/test-details";
+import DashboardError from "@/app/(app)/dashboard/error";
+import TestError from "@/app/(app)/tests/[id]/error";
+import NotFound from "@/app/not-found";
+import { SetupRequired } from "@/components/setup-required";
 
 const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
@@ -14,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("convex/react", () => ({ useQuery: mocks.useQuery, usePaginatedQuery: mocks.usePaginatedQuery }));
 vi.mock("@/components/app-header", () => ({ AppHeader: () => <header>Header</header> }));
-vi.mock("@/components/new-test-dialog", () => ({ NewTestDialog: () => null }));
+vi.mock("@/components/new-test-dialog", () => ({ NewTestDialog: () => <div role="dialog" aria-label="New test flow" /> }));
 vi.mock("@/components/onboarding-dialog", () => ({ OnboardingDialog: () => null }));
 
 const me = { _id: "user-1", balanceCents: 600, onboardingClaimedAt: Date.now() };
@@ -50,6 +54,26 @@ describe("critical UI states", () => {
       if (name === "tests:list") return [];
       return undefined;
     });
+  });
+
+  it("opens the test creation flow from the dashboard action", () => {
+    render(<Dashboard />);
+    fireEvent.click(screen.getAllByRole("button", { name: "New test" })[0]);
+    expect(screen.getByRole("dialog", { name: "New test flow" })).toBeInTheDocument();
+  });
+
+  it("uses page headings in full-page state cards", () => {
+    const { rerender } = render(<DashboardError reset={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Dashboard unavailable" })).toBeInTheDocument();
+
+    rerender(<TestError reset={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Results unavailable" })).toBeInTheDocument();
+
+    rerender(<NotFound />);
+    expect(screen.getByRole("heading", { level: 1, name: "Page not found" })).toBeInTheDocument();
+
+    rerender(<SetupRequired />);
+    expect(screen.getByRole("heading", { level: 1, name: "Connect Convex to continue" })).toBeInTheDocument();
   });
 
   it("uses terminal copy instead of saying a failed test is awaiting responses", () => {

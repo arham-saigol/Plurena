@@ -23,6 +23,8 @@ describe("account action disclosure", () => {
   it("exposes expanded state and closes on Escape with focus restored", () => {
     render(<AppHeader />);
     const trigger = screen.getByRole("button", { name: "Account actions" });
+    expect(trigger).toHaveClass("account-trigger");
+    expect(trigger.querySelector('[data-slot="avatar"]')).toHaveClass("account-avatar");
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("group", { name: "Account actions" })).toBeInTheDocument();

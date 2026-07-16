@@ -1,10 +1,8 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/tests(.*)", "/api/checkout(.*)"]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) await auth.protect();
-}, {
+// Authentication is enforced by each protected page and route handler.
+// Clerk middleware still needs to run so `auth()` can read the session.
+export default clerkMiddleware({
   signInUrl: "/sign-in",
   signUpUrl: "/sign-in",
 });

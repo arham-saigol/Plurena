@@ -3,8 +3,10 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Check, Gift } from "@phosphor-icons/react";
-import { useDialogA11y } from "@/lib/use-dialog-a11y";
+import { Gift } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 const goals = [
   ["validate-ideas", "Validate ideas before investing"],
@@ -20,7 +22,6 @@ const plans = [
 ];
 
 export function OnboardingDialog() {
-  const dialogRef = useDialogA11y();
   const complete = useMutation(api.users.completeOnboarding);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
@@ -37,15 +38,15 @@ export function OnboardingDialog() {
       setBusy(false);
     }
   };
-  return <div className="dialog-backdrop onboarding-backdrop"><section ref={dialogRef} className="dialog onboarding-dialog" role="dialog" aria-modal="true" aria-label="Claim onboarding credit">
-    <div className="gift-mark"><Gift size={20} weight="fill" /></div><p className="eyebrow">$6 welcome credit</p><h2>Tell us how you plan to use Plurena.</h2><p className="muted">Answer both questions to claim enough credit for your first 20-person test.</p>
+  return <Dialog open><DialogContent className="onboarding-dialog max-w-xl" showCloseButton={false}>
+    <div className="gift-mark"><Gift size={20} weight="fill" /></div><p className="eyebrow">$6 welcome credit</p><DialogTitle>Tell us how you plan to use Plurena.</DialogTitle><DialogDescription>Answer both questions to claim enough credit for your first 20-person test.</DialogDescription>
     <Question title="What are you hoping to do?" items={goals} selected={selectedGoals} onToggle={(value) => toggle(value, setSelectedGoals)} />
     <Question title="How do you expect to use the results?" items={plans} selected={selectedPlans} onToggle={(value) => toggle(value, setSelectedPlans)} />
-    {error && <p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={busy} onClick={submit}>{busy ? "Saving…" : "Claim $6 credit"}</button>
+    {error && <p className="form-error" role="alert">{error}</p>}<Button size="lg" className="w-full" disabled={busy} onClick={submit}>{busy ? "Saving…" : "Claim $6 credit"}</Button>
     <p className="fine-print">Plurena awards this credit once per account, subject to daily availability.</p>
-  </section></div>;
+  </DialogContent></Dialog>;
 }
 
 function Question({ title, items, selected, onToggle }: { title: string; items: string[][]; selected: string[]; onToggle(value: string): void }) {
-  return <fieldset className="onboarding-question"><legend>{title}</legend>{items.map(([value, label]) => <label key={value} className={selected.includes(value) ? "check-option checked" : "check-option"}><input type="checkbox" checked={selected.includes(value)} onChange={() => onToggle(value)} /><span className="fake-check">{selected.includes(value) && <Check size={12} weight="bold" />}</span><span>{label}</span></label>)}</fieldset>;
+  return <fieldset className="onboarding-question"><legend>{title}</legend>{items.map(([value, label]) => <label key={value} className={selected.includes(value) ? "check-option checked" : "check-option"}><Checkbox checked={selected.includes(value)} onCheckedChange={() => onToggle(value)} /><span>{label}</span></label>)}</fieldset>;
 }
