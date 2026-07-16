@@ -5,8 +5,9 @@ import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { ArrowRight, ChartBar, ChatText, CheckCircle, Faders, Plus, WarningCircle } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, ChartBar, ChatText, CheckCircle, Faders, MagnifyingGlass, Plus, Star, WarningCircle } from "@phosphor-icons/react";
+import { SlidersHorizontal } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { NewTestDialog } from "@/components/new-test-dialog";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
@@ -16,83 +17,168 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+type TestTypeFilter = "all" | "compare" | "question";
+type StatusFilter = "all" | "in_progress" | "completed" | "partial" | "failed";
+
+const testTypeFilters: { value: TestTypeFilter; label: string; icon: typeof Star }[] = [
+  { value: "all", label: "All Tests", icon: Star },
+  { value: "compare", label: "Comparison Tests", icon: ChartBar },
+  { value: "question", label: "Question Tests", icon: ChatText },
+];
+
+const statusFilters: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All statuses" },
+  { value: "in_progress", label: "In progress" },
+  { value: "completed", label: "Completed" },
+  { value: "partial", label: "Partial" },
+  { value: "failed", label: "Failed" },
+];
 
 export function Dashboard() {
   const me = useQuery(api.users.me, {});
   const pricing = useQuery(api.pricing.getConfig, {});
-  const [type, setType] = useState<"all" | "compare" | "question">("all");
-  const [status, setStatus] = useState<"all" | "queued" | "running" | "synthesizing" | "completed" | "partial" | "failed">("all");
+  const [type, setType] = useState<TestTypeFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const queryStatus = status === "completed" || status === "partial" || status === "failed" ? status : undefined;
   const { results: tests, status: historyStatus, loadMore } = usePaginatedQuery(
     api.tests.list,
-    me ? { type: type === "all" ? undefined : type, status: status === "all" ? undefined : status } : "skip",
+    me ? { type: type === "all" ? undefined : type, status: queryStatus, search: search.trim() || undefined } : "skip",
     { initialNumItems: 50 },
   );
+  const visibleTests = tests.filter((test) => {
+    const statusMatches = status !== "in_progress" || ["queued", "running", "synthesizing"].includes(test.status);
+    return statusMatches && test.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+  });
   const [newTest, setNewTest] = useState(false);
   const paymentProcessing = useSearchParams()?.get("payment") === "processing";
   const [renderedAt] = useState(() => Date.now());
   const ready = Boolean(me?.onboardingClaimedAt);
 
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus();
+  }, [searchOpen]);
+
   return (
     <div className="min-h-svh bg-background text-foreground">
       <AppHeader />
       <main className="mx-auto w-full max-w-6xl px-5 pb-24 pt-12 sm:px-8 sm:pt-16">
-        <section className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Workspace</p>
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Tests</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Launch a focused study and follow every response from one calm workspace.</p>
-          </div>
-          <Button
-            className="h-10 w-full px-4 shadow-[0_4px_12px_rgba(5,98,239,0.18)] sm:w-auto"
-            onClick={() => setNewTest(true)}
-            disabled={!ready}
-          >
-            <Plus size={16} weight="bold" /> New test
-          </Button>
+        <section>
+          <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Tests</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Test ideas with targeted AI panels and turn every response into a clearer decision.</p>
         </section>
 
         {paymentProcessing && <Alert className="mt-8 border-primary/15 bg-primary/5 text-foreground" role="status"><CheckCircle className="text-primary" /><AlertTitle>Payment received</AlertTitle><AlertDescription>Your balance will update as soon as checkout confirmation arrives. This usually takes a few seconds.</AlertDescription></Alert>}
 
-        <section className="mt-12" aria-labelledby="test-history-heading">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-2">
-              <h2 id="test-history-heading" className="sr-only">Test history</h2>
-              <NativeSelect className="w-full sm:w-36" aria-label="Type" value={type} onChange={(event) => setType(event.target.value as typeof type)}>
-                <NativeSelectOption value="all">All types</NativeSelectOption>
-                <NativeSelectOption value="compare">Compare</NativeSelectOption>
-                <NativeSelectOption value="question">Question</NativeSelectOption>
-              </NativeSelect>
-              <NativeSelect className="w-full sm:w-40" aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-                <NativeSelectOption value="all">All statuses</NativeSelectOption>
-                <NativeSelectOption value="queued">Queued</NativeSelectOption>
-                <NativeSelectOption value="running">Running</NativeSelectOption>
-                <NativeSelectOption value="synthesizing">Synthesizing</NativeSelectOption>
-                <NativeSelectOption value="completed">Completed</NativeSelectOption>
-                <NativeSelectOption value="partial">Partial</NativeSelectOption>
-                <NativeSelectOption value="failed">Failed</NativeSelectOption>
-              </NativeSelect>
+        <section className="mt-10" aria-labelledby="test-history-heading">
+          <h2 id="test-history-heading" className="sr-only">Test history</h2>
+          <div className="mb-3 flex min-h-12 flex-col gap-3 border-b border-border/80 pb-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto" role="tablist" aria-label="Test type">
+              {testTypeFilters.map((filter) => {
+                const Icon = filter.icon;
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={type === filter.value}
+                    className={cn(
+                      "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground transition-[color,background-color] duration-200 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/25",
+                      type === filter.value && "bg-foreground/10 text-foreground",
+                    )}
+                    onClick={() => setType(filter.value)}
+                  >
+                    <Icon size={16} weight={type === filter.value ? "fill" : "regular"} />
+                    {filter.label}
+                  </button>
+                );
+              })}
             </div>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {tests.length} {tests.length === 1 ? "test" : "tests"}{historyStatus !== "Exhausted" ? " loaded" : ""}
-            </span>
+
+            <div className="flex min-w-0 items-center justify-end gap-1.5">
+              <div className={cn("flex h-9 items-center overflow-hidden transition-[width] duration-300 ease-out", searchOpen ? "min-w-0 flex-1 sm:w-48 sm:flex-none" : "w-8 shrink-0")}>
+                <button
+                  type="button"
+                  className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/25"
+                  aria-label="Search tests"
+                  aria-expanded={searchOpen}
+                  onClick={() => {
+                    if (searchOpen) setSearch("");
+                    setSearchOpen((open) => !open);
+                  }}
+                >
+                  <MagnifyingGlass size={18} />
+                </button>
+                <input
+                  ref={searchInput}
+                  type="search"
+                  aria-label="Search test titles"
+                  placeholder="Search title"
+                  value={search}
+                  tabIndex={searchOpen ? 0 : -1}
+                  className={cn("h-9 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/75", searchOpen ? "opacity-100" : "pointer-events-none opacity-0")}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && !search) setSearchOpen(false);
+                  }}
+                />
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Filter tests by status"
+                      className={cn("text-muted-foreground", status !== "all" && "bg-muted text-foreground")}
+                    />
+                  }
+                >
+                  <SlidersHorizontal size={18} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuRadioGroup value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
+                    <DropdownMenuLabel>Status</DropdownMenuLabel>
+                    {statusFilters.map((filter) => (
+                      <DropdownMenuRadioItem key={filter.value} value={filter.value}>
+                        {filter.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                className="h-9 px-3.5 text-white shadow-[0_4px_12px_rgba(5,98,239,0.18)]"
+                style={{ color: "#fff" }}
+                onClick={() => setNewTest(true)}
+                disabled={!ready}
+              >
+                <Plus size={16} weight="bold" color="#fff" /> <span style={{ color: "#fff" }}>New Test</span>
+              </Button>
+            </div>
           </div>
 
           <Card className="overflow-hidden rounded-xl border-border/80 bg-card py-0 shadow-[0_1px_2px_rgba(0,0,0,0.03)]" aria-label="Past tests">
             {historyStatus === "LoadingFirstPage" ? (
               <LoadingRows />
-            ) : tests.length === 0 ? (
+            ) : visibleTests.length === 0 ? (
               <EmptyState
                 onCreate={() => setNewTest(true)}
                 ready={ready}
-                filtered={type !== "all" || status !== "all"}
-                onClear={() => { setType("all"); setStatus("all"); }}
+                filtered={type !== "all" || status !== "all" || Boolean(search.trim())}
+                onClear={() => { setType("all"); setStatus("all"); setSearch(""); }}
               />
             ) : (
               <>
-                {tests.map((test) => <TestRow key={test._id} test={test} renderedAt={renderedAt} />)}
+                {visibleTests.map((test) => <TestRow key={test._id} test={test} renderedAt={renderedAt} />)}
                 {historyStatus !== "Exhausted" && (
                   <div className="flex justify-center border-t p-4">
                     <Button variant="outline" disabled={historyStatus === "LoadingMore"} onClick={() => loadMore(50)}>
@@ -187,7 +273,7 @@ function EmptyState({ onCreate, ready, filtered, onClear }: { onCreate(): void; 
       {filtered ? (
         <Button className="mt-5" variant="outline" onClick={onClear}>Clear filters</Button>
       ) : ready ? (
-        <Button className="mt-5" onClick={onCreate}><Plus size={15} /> New test</Button>
+        <Button className="mt-5" onClick={onCreate}><Plus size={15} /> New Test</Button>
       ) : null}
     </div>
   );

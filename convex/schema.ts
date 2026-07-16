@@ -143,7 +143,8 @@ export default defineSchema({
     .index("by_user_type_created", ["userId", "testType", "launchedAt"])
     .index("by_user_status_created", ["userId", "status", "launchedAt"])
     .index("by_user_type_status_created", ["userId", "testType", "status", "launchedAt"])
-    .index("by_status_launched", ["status", "launchedAt"]),
+    .index("by_status_launched", ["status", "launchedAt"])
+    .searchIndex("search_title", { searchField: "title", filterFields: ["userId", "testType", "status"] }),
 
   options: defineTable({
     testId: v.id("tests"),

@@ -170,10 +170,19 @@ export const list = query({
   args: {
     type: v.optional(v.union(v.literal("compare"), v.literal("question"))),
     status: v.optional(v.union(v.literal("queued"), v.literal("running"), v.literal("synthesizing"), v.literal("completed"), v.literal("partial"), v.literal("failed"))),
+    search: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    if (args.search) {
+      return await ctx.db.query("tests").withSearchIndex("search_title", (q) => {
+        let searchQuery = q.search("title", args.search!).eq("userId", user._id);
+        if (args.type) searchQuery = searchQuery.eq("testType", args.type);
+        if (args.status) searchQuery = searchQuery.eq("status", args.status);
+        return searchQuery;
+      }).paginate(args.paginationOpts);
+    }
     if (args.type && args.status) {
       return await ctx.db.query("tests").withIndex("by_user_type_status_created", (q) => q.eq("userId", user._id).eq("testType", args.type!).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
     }

@@ -58,7 +58,9 @@ describe("critical UI states", () => {
 
   it("opens the test creation flow from the dashboard action", () => {
     render(<Dashboard />);
-    fireEvent.click(screen.getAllByRole("button", { name: "New test" })[0]);
+    const newTestButton = screen.getAllByRole("button", { name: "New Test" })[0];
+    expect(newTestButton).toHaveStyle({ color: "rgb(255, 255, 255)" });
+    fireEvent.click(newTestButton);
     expect(screen.getByRole("dialog", { name: "New test flow" })).toBeInTheDocument();
   });
 
@@ -129,7 +131,42 @@ describe("critical UI states", () => {
   it("distinguishes a filtered empty result from an empty account", async () => {
     render(<Dashboard />);
     expect(screen.getByRole("heading", { name: "No tests yet" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "completed" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Comparison Tests" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "No tests match these filters" })).toBeInTheDocument());
+  });
+
+  it("opens the title search and filters loaded tests by status", async () => {
+    mocks.usePaginatedQuery.mockReturnValue({
+      results: [{
+        _id: "test-1",
+        title: "Homepage comparison",
+        testType: "compare",
+        status: "completed",
+        panelSize: 20,
+        priceCents: 500,
+        completedCount: 20,
+        failedCount: 0,
+        launchedAt: Date.now(),
+      }],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    render(<Dashboard />);
+    const searchButton = screen.getByRole("button", { name: "Search tests" });
+    fireEvent.click(searchButton);
+    const search = screen.getByRole("searchbox", { name: "Search test titles" });
+    expect(search).toHaveFocus();
+    fireEvent.click(searchButton);
+    expect(searchButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(searchButton);
+    expect(search).toHaveFocus();
+    fireEvent.change(search, { target: { value: "missing" } });
+    expect(screen.getByRole("heading", { name: "No tests match these filters" })).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "homepage" } });
+    fireEvent.click(screen.getByRole("button", { name: "Filter tests by status" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "In progress" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "No tests match these filters" })).toBeInTheDocument());
   });
 });
