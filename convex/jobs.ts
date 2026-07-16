@@ -6,7 +6,7 @@ import type { Id } from "./_generated/dataModel";
 import { z } from "zod";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
-import { MODEL_REGISTRY, routesWithCrossModelFallback, type ModelRoute } from "./lib/modelRegistry";
+import { SYNTHESIS_ROUTES, routesWithCrossModelFallback, type ModelRoute } from "./lib/modelRegistry";
 import { SYNTHESIS_SYSTEM_PROMPT } from "./lib/synthesisGuidance";
 import { buildSynthesisResponseEvidence } from "./lib/synthesisEvidence";
 
@@ -357,14 +357,13 @@ export const synthesize = internalAction({
       responses: evidenceSelection.responses,
       omittedResponseCount: evidenceSelection.omittedResponseCount,
     };
-    const requested = MODEL_REGISTRY.find((model) => model.key === "qwen3.7-plus")!;
     let synthesis: z.infer<typeof synthesisSchema> | undefined;
     let usedRoute: { provider: string; model: string } | undefined;
     let usedResult: Awaited<ReturnType<typeof callChat>> | undefined;
     let synthesisCalls = 0;
     let synthesisAttempt = 0;
     const synthesisDeadline = Date.now() + 8 * 60 * 1_000;
-    for (const route of routesWithCrossModelFallback(requested.key, false)) {
+    for (const route of SYNTHESIS_ROUTES) {
       if (synthesisCalls >= 6 || Date.now() >= synthesisDeadline) break;
       let revisionPrompt = "";
       let pendingSynthesisAttempt: { attempt: number; report: HttpAttemptReport } | undefined;
@@ -372,7 +371,7 @@ export const synthesize = internalAction({
         for (let revision = 0; revision < 2 && synthesisCalls < 6 && Date.now() < synthesisDeadline; revision += 1) {
           const result = await callChat(route, [
             { role: "system", content: SYNTHESIS_SYSTEM_PROMPT },
-            { role: "user", content: `${revisionPrompt}Return JSON shaped as {summary, patterns, disagreements, nextActions, scores:{directness,rhythm,trust,authenticity,density}}. Evidence:\n${JSON.stringify(evidence)}` },
+            { role: "user", content: `${revisionPrompt}Return JSON shaped as {summary, patterns, disagreements, nextActions, scores:{directness,rhythm,trust,authenticity,density}}. Comparison options are listed in canonical test order, not any respondent-specific shuffled order. Evidence:\n${JSON.stringify(evidence)}` },
           ], 2_400, async (report) => {
             synthesisCalls += 1;
             synthesisAttempt += 1;

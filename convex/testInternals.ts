@@ -162,12 +162,13 @@ export const aggregate = internalMutation({
       ctx.db.query("options").withIndex("by_test", (q) => q.eq("testId", args.testId)).collect(),
       ctx.db.query("responses").withIndex("by_test", (q) => q.eq("testId", args.testId)).collect(),
     ]);
+    const orderedOptions = options.sort((a, b) => a.position - b.position);
     const normalized = responses.map((item) => ({ choiceOptionId: item.choiceOptionId ? String(item.choiceOptionId) : undefined, answer: item.answer, feedback: item.feedback }));
-    const data = test.testType === "compare" ? aggregateComparison(options.map((item) => String(item._id)), normalized) : aggregateOpenEnded(normalized);
+    const data = test.testType === "compare" ? aggregateComparison(orderedOptions.map((item) => String(item._id)), normalized) : aggregateOpenEnded(normalized);
     if (!existing) {
       await ctx.db.insert("aggregates", { testId: test._id, userId: test.userId, kind: test.testType === "compare" ? "comparison" : "open_ended", data, responseCount: responses.length, generatedAt: Date.now() });
     }
-    return { test, options, responses, data };
+    return { test, options: orderedOptions, responses, data };
   },
 });
 

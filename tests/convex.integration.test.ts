@@ -206,6 +206,36 @@ describe("Convex transaction boundaries", () => {
     expect(stored.synthesis).not.toHaveProperty("leaseToken");
   });
 
+  it("returns comparison options in canonical order for synthesis", async () => {
+    const t = makeTest();
+    const testId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: "synthesis-order", tokenIdentifier: "issuer|synthesis-order", balanceCents: 0, createdAt: Date.now(), updatedAt: Date.now() });
+      const testId = await ctx.db.insert("tests", {
+        userId,
+        clientRequestId: "synthesis-order-request",
+        inputFingerprint: "synthesis-order-fingerprint",
+        title: "Which option is clearer?",
+        testType: "compare",
+        status: "synthesizing",
+        audience: { locations: ["US"], description: "Research audience", gender: "mixed", minAge: 20, maxAge: 40 },
+        panelSize: 20,
+        priceCents: 500,
+        priceVersion: "panel-v1",
+        completedCount: 20,
+        failedCount: 0,
+        reusedPanel: false,
+        launchedAt: Date.now(),
+      });
+      await ctx.db.insert("options", { testId, userId, position: 1, label: "Second", optionType: "text", text: "Second option" });
+      await ctx.db.insert("options", { testId, userId, position: 0, label: "First", optionType: "text", text: "First option" });
+      return testId;
+    });
+
+    const bundle = await t.mutation(internal.testInternals.aggregate, { testId });
+
+    expect(bundle?.options.map((option) => option.label)).toEqual(["First", "Second"]);
+  });
+
   it("refunds a zero-response panel exactly once", async () => {
     const t = makeTest();
     const { userId, testId } = await t.run(async (ctx) => {

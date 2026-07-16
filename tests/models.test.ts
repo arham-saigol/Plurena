@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MODEL_REGISTRY, modelForAssignment, routesWithCrossModelFallback } from "@/convex/lib/modelRegistry";
+import { MODEL_REGISTRY, SYNTHESIS_ROUTES, modelForAssignment, routesWithCrossModelFallback } from "@/convex/lib/modelRegistry";
 
 describe("model registry", () => {
   it("matches the ten configured model families", () => expect(MODEL_REGISTRY).toHaveLength(10));
@@ -13,6 +13,13 @@ describe("model registry", () => {
       { provider: "openrouter", model: "minimax/minimax-m3", protocol: "openai_chat_completions", resolvedModelKey: "minimax-m3" },
     ]);
     expect(routes[2].resolvedModelKey).not.toBe("minimax-m3");
+  });
+
+  it("uses GLM 5.2 exclusively for synthesis", () => {
+    expect(SYNTHESIS_ROUTES).toEqual([
+      { provider: "opencode_go", model: "glm-5.2", protocol: "openai_chat_completions" },
+      { provider: "openrouter", model: "z-ai/glm-5.2", protocol: "openai_chat_completions" },
+    ]);
   });
 
   it("uses the protocol documented for every OpenCode Go model", () => {

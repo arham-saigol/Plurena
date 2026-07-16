@@ -160,7 +160,7 @@ Vercel environment changes apply to new deployments, so redeploy after changing 
 3. Zod validates provider JSON before `testInternals.finishAssignment` stores the response. Every attempt records status, route, latency, and safe error data.
 4. Convex subscriptions update completed/failed counts on the dashboard and detail page.
 5. After every assignment reaches a terminal state, Convex creates the aggregate and schedules a separate synthesis action.
-6. The synthesis prompt in [`convex/lib/synthesisGuidance.ts`](convex/lib/synthesisGuidance.ts) carries the relevant Stop Slop rules. The model scores directness, rhythm, trust, authenticity, and density, then revises a draft below 35/50. A bounded, stratified evidence builder keeps large panels within a fixed prompt budget and records how many responses were omitted from the synthesis prompt.
+6. The synthesis prompt in [`convex/lib/synthesisGuidance.ts`](convex/lib/synthesisGuidance.ts) carries the relevant Stop Slop rules. GLM 5.2 scores directness, rhythm, trust, authenticity, and density, then revises a draft below 35/50. The evidence builder includes an answer and feedback excerpt from every completed respondent, and comparison options are restored to their canonical test order before synthesis.
 
 ## Data model
 
@@ -176,7 +176,7 @@ npm run validate
 npm audit
 ```
 
-The test suite covers pricing, credit and payment idempotency, ownership, real-schema synthesis persistence, a 250-person launch under Convex transaction limits, panel distribution, option randomization, aggregation ties, synthesis evidence limits, model routing, and checkout URL boundaries. `.github/workflows/ci.yml` runs the local validation suite and can run Convex code generation when `CONVEX_DEPLOY_KEY` is configured.
+The test suite covers pricing, credit and payment idempotency, ownership, real-schema synthesis persistence, a 250-person launch under Convex transaction limits, panel distribution, option randomization, aggregation ties, all-respondent synthesis evidence, model routing, and checkout URL boundaries. `.github/workflows/ci.yml` runs the local validation suite and can run Convex code generation when `CONVEX_DEPLOY_KEY` is configured.
 
 Live Clerk, Creem, and AI-provider end-to-end tests still require sandbox credentials.
 
