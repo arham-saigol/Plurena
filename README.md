@@ -155,18 +155,19 @@ Vercel environment changes apply to new deployments, so redeploy after changing 
 
 ## Backend flow
 
-1. `tests.launch` authenticates the Clerk identity, recalculates the quote, checks ownership of image assets, blocks a short balance, writes the test/options/personas/assignments/ledger entry, and schedules respondent actions in one Convex mutation.
-2. Each action loads one persona, sends options in that respondent's stable randomized order, and cycles through the requested model route, its fallback, then one other eligible model's routes. A six-call budget caps retries and fallback spend.
-3. Zod validates provider JSON before `testInternals.finishAssignment` stores the response. Every attempt records status, route, latency, and safe error data.
-4. Convex subscriptions update completed/failed counts on the dashboard and detail page.
-5. After every assignment reaches a terminal state, Convex creates the aggregate and schedules a separate synthesis action.
-6. The synthesis prompt in [`convex/lib/synthesisGuidance.ts`](convex/lib/synthesisGuidance.ts) carries the relevant Stop Slop rules. GLM 5.2 scores directness, rhythm, trust, authenticity, and density, then revises a draft below 35/50. The evidence builder includes an answer and feedback excerpt from every completed respondent, and comparison options are restored to their canonical test order before synthesis.
+1. `tests.launch` authenticates the Clerk identity, recalculates the quote, checks image ownership, charges the balance, writes the test/options/demographic slots/assignments/ledger entry, and schedules panel design in one Convex mutation.
+2. GLM 5.2 compiles the audience and study into a versioned behavioral blueprint, then generates coherent profiles in bounded batches. Deterministic quota allocation, schema validation, criterion normalization, duplicate detection, and build leases gate the panel before any respondent runs. A failed build retries once and then fails and refunds atomically.
+3. Each respondent action receives only its structured decision context and the study material in a stable randomized order. It cycles through the requested model route, its fallback, then another eligible model's routes. A six-call budget caps retries and fallback spend.
+4. Zod validates the choice or answer, confidence, decision factors, missing evidence, and feedback before `testInternals.finishAssignment` stores the response. Every attempt records status, route, latency, and safe error data.
+5. Convex subscriptions update panel-design and response progress on the dashboard and detail page.
+6. After every assignment reaches a terminal state, Convex creates the aggregate and schedules a separate synthesis action.
+7. The synthesis prompt in [`convex/lib/synthesisGuidance.ts`](convex/lib/synthesisGuidance.ts) carries the relevant Stop Slop rules. GLM 5.2 scores directness, rhythm, trust, authenticity, and density, then revises a draft below 35/50. The evidence builder includes every completed respondent's answer, feedback, confidence, decision factors, and missing-evidence excerpts; comparison options are restored to canonical test order before synthesis.
 
 ## Data model
 
-[`convex/schema.ts`](convex/schema.ts) defines users, onboarding answers, credit ledger entries, payments, saved audiences, owned assets, tests, options, personas, assignments, responses, model attempts, aggregates, and syntheses. Public functions derive the user from `ctx.auth`; browser calls never provide an owner ID.
+[`convex/schema.ts`](convex/schema.ts) defines users, onboarding answers, credit ledger entries, payments, saved audiences, owned assets, tests, options, personas, assignments, responses, panel/respondent/synthesis attempts, aggregates, and syntheses. Public functions derive the user from `ctx.auth`; browser calls never provide an owner ID.
 
-The same-panel rerun copies the original persona attributes into the new test and records each source persona. A normal rerun calls the panel generator again.
+The same-panel rerun copies the original structured profiles and model assignments into the new test and records each source persona. A normal rerun asks GLM 5.2 to design a fresh panel. Segment percentages are purposeful synthetic coverage weights, not estimates of population prevalence.
 
 ## Validation
 

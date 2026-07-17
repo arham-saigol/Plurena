@@ -16,11 +16,23 @@ export const MODEL_REGISTRY: readonly ModelDefinition[] = [
   { key: "step-3.7-flash", label: "Step 3.7 Flash", vision: true, routes: [{ provider: "openrouter", model: "stepfun/step-3.7-flash", protocol: "openai_chat_completions" }] },
 ] as const;
 
-export const SYNTHESIS_ROUTES = MODEL_REGISTRY.find((model) => model.key === "glm-5.2")!.routes;
+export const PANEL_GENERATION_ROUTES = MODEL_REGISTRY.find((model) => model.key === "glm-5.2")!.routes;
+export const SYNTHESIS_ROUTES = PANEL_GENERATION_ROUTES;
 
-export function modelForAssignment(ordinal: number, needsVision: boolean) {
-  const eligible = needsVision ? MODEL_REGISTRY.filter((model) => model.vision) : MODEL_REGISTRY;
-  return eligible[ordinal % eligible.length];
+function hashSeed(input: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function modelForAssignment(ordinal: number, needsVision: boolean, seed = "plurena") {
+  const eligible = needsVision ? MODEL_REGISTRY.filter((model) => model.vision) : [...MODEL_REGISTRY];
+  const cycle = Math.floor(ordinal / eligible.length);
+  const ordered = [...eligible].sort((a, b) => hashSeed(`${seed}:${cycle}:${a.key}`) - hashSeed(`${seed}:${cycle}:${b.key}`));
+  return ordered[ordinal % ordered.length];
 }
 
 export function routesWithCrossModelFallback(modelKey: string, needsVision: boolean) {

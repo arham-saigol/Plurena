@@ -1,10 +1,11 @@
 import { paginationOptsValidator } from "convex/server";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { requireOwned, requireUser } from "./lib/auth";
-import { modelForAssignment } from "./lib/modelRegistry";
-import { audienceValidator, generatePanel, shuffleForRespondent } from "./lib/panel";
+import { MODEL_REGISTRY, modelForAssignment } from "./lib/modelRegistry";
+import { PANEL_VERSION, audienceValidator, generatePanelSlots, shuffleForRespondent, type AudienceBlueprint, type AudienceCriteria } from "./lib/panel";
 import { quotePanel } from "./lib/pricing";
 import { stableFingerprint } from "./lib/idempotency";
 import { applyCreditEntry } from "./lib/credits";
@@ -17,6 +18,24 @@ const optionValidator = v.object({
 });
 
 const runRespondent = internal.jobs.runRespondent;
+const buildPanel = internal.jobs.buildPanel;
+
+function sameAudience(left: AudienceCriteria, right: AudienceCriteria) {
+  return left.description.trim() === right.description.trim()
+    && left.gender === right.gender
+    && left.minAge === right.minAge
+    && left.maxAge === right.maxAge
+    && JSON.stringify(left.locations.map((item) => item.trim()).filter(Boolean)) === JSON.stringify(right.locations.map((item) => item.trim()).filter(Boolean));
+}
+
+function publicTest(test: Doc<"tests">) {
+  const result = { ...test };
+  delete result.panelBuildLeaseToken;
+  delete result.panelBuildLeaseExpiresAt;
+  delete result.synthesisLeaseToken;
+  delete result.synthesisLeaseExpiresAt;
+  return result;
+}
 
 export const launch = mutation({
   args: {
@@ -64,12 +83,25 @@ export const launch = mutation({
     }
 
     let sourcePersonas: any[] = [];
+    const sourceModelKeys = new Map<number, string>();
+    let sourceBlueprint: AudienceBlueprint | undefined;
+    let sourcePanelVersion: string | undefined;
     if (args.rerunOf) {
       const source = await ctx.db.get(args.rerunOf);
       if (!source || String(source.userId) !== String(user._id)) throw new Error("NOT_FOUND");
       if (args.reusePanel) {
-        sourcePersonas = await ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", args.rerunOf!)).collect();
-        if (sourcePersonas.length !== args.panelSize) throw new Error("SAME_PANEL_SIZE_MISMATCH");
+        if (!sameAudience(source.audience, normalizedAudience)) throw new Error("SAME_PANEL_AUDIENCE_MISMATCH");
+        if (source.panelVersion === PANEL_VERSION && (!source.panelReadyAt || !source.panelBlueprint)) throw new Error("SAME_PANEL_NOT_READY");
+        const [personas, assignments] = await Promise.all([
+          ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", args.rerunOf!)).take(250),
+          ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", args.rerunOf!)).take(250),
+        ]);
+        sourcePersonas = personas.sort((a, b) => a.ordinal - b.ordinal);
+        if (sourcePersonas.length !== args.panelSize || assignments.length !== args.panelSize) throw new Error("SAME_PANEL_SIZE_MISMATCH");
+        if (source.panelVersion === PANEL_VERSION && sourcePersonas.some((persona) => !persona.profile)) throw new Error("SAME_PANEL_NOT_READY");
+        for (const assignment of assignments) sourceModelKeys.set(assignment.ordinal, assignment.modelKey);
+        sourceBlueprint = source.panelBlueprint;
+        sourcePanelVersion = source.panelVersion;
       }
     }
 
@@ -89,6 +121,10 @@ export const launch = mutation({
       failedCount: 0,
       rerunOf: args.rerunOf,
       reusedPanel: Boolean(args.rerunOf && args.reusePanel),
+      panelVersion: sourcePersonas.length ? (sourcePanelVersion ?? "legacy-panel-v1") : PANEL_VERSION,
+      panelBlueprint: sourceBlueprint,
+      panelReadyAt: sourcePersonas.length ? now : undefined,
+      panelBuildAttemptCount: sourcePersonas.length ? undefined : 0,
       launchedAt: now,
     });
 
@@ -118,7 +154,7 @@ export const launch = mutation({
 
     const generated = sourcePersonas.length
       ? sourcePersonas.map((persona) => ({ ...persona, sourcePersonaId: persona._id }))
-      : generatePanel(normalizedAudience, args.panelSize, `${testId}:${now}`);
+      : generatePanelSlots(normalizedAudience, args.panelSize, `${testId}:${now}`);
     const hasImages = args.options.some((option) => option.optionType === "image");
     for (let ordinal = 0; ordinal < generated.length; ordinal += 1) {
       const persona = generated[ordinal];
@@ -129,26 +165,30 @@ export const launch = mutation({
         age: persona.age,
         location: persona.location,
         gender: persona.gender,
-        interests: persona.interests,
-        habits: persona.habits,
-        constraints: persona.constraints,
-        pointOfView: persona.pointOfView,
+        interests: persona.interests ?? [],
+        habits: persona.habits ?? [],
+        constraints: persona.constraints ?? [],
+        pointOfView: persona.pointOfView ?? "Panel profile pending",
+        profile: persona.profile,
         sourcePersonaId: persona.sourcePersonaId,
       });
-      const model = modelForAssignment(ordinal, hasImages);
+      const sourceModelKey = sourceModelKeys.get(ordinal);
+      const sourceModel = sourceModelKey ? MODEL_REGISTRY.find((model) => model.key === sourceModelKey) : undefined;
+      const modelKey = sourceModel && (!hasImages || sourceModel.vision) ? sourceModel.key : modelForAssignment(ordinal, hasImages, `${testId}:models`).key;
       const assignmentId = await ctx.db.insert("assignments", {
         testId,
         userId: user._id,
         personaId,
         ordinal,
         shuffledOptionIds: shuffleForRespondent(optionIds, `${testId}:${ordinal}`),
-        modelKey: model.key,
+        modelKey,
         status: "queued",
         attemptCount: 0,
         createdAt: now,
       });
-      await ctx.scheduler.runAfter(ordinal * 250, runRespondent, { assignmentId });
+      if (sourcePersonas.length) await ctx.scheduler.runAfter(ordinal * 250, runRespondent, { assignmentId });
     }
+    if (!sourcePersonas.length) await ctx.scheduler.runAfter(0, buildPanel, { testId });
 
     const balanceCents = applyCreditEntry({ balanceCents: user.balanceCents, appliedKeys: new Set<string>() }, `test:${testId}:charge`, -quote.priceCents).balanceCents;
     await ctx.db.insert("creditLedger", {
@@ -175,20 +215,24 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    let result;
     if (args.search) {
-      return await ctx.db.query("tests").withSearchIndex("search_title", (q) => {
+      result = await ctx.db.query("tests").withSearchIndex("search_title", (q) => {
         let searchQuery = q.search("title", args.search!).eq("userId", user._id);
         if (args.type) searchQuery = searchQuery.eq("testType", args.type);
         if (args.status) searchQuery = searchQuery.eq("status", args.status);
         return searchQuery;
       }).paginate(args.paginationOpts);
+    } else if (args.type && args.status) {
+      result = await ctx.db.query("tests").withIndex("by_user_type_status_created", (q) => q.eq("userId", user._id).eq("testType", args.type!).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
+    } else if (args.type) {
+      result = await ctx.db.query("tests").withIndex("by_user_type_created", (q) => q.eq("userId", user._id).eq("testType", args.type!)).order("desc").paginate(args.paginationOpts);
+    } else if (args.status) {
+      result = await ctx.db.query("tests").withIndex("by_user_status_created", (q) => q.eq("userId", user._id).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
+    } else {
+      result = await ctx.db.query("tests").withIndex("by_user_created", (q) => q.eq("userId", user._id)).order("desc").paginate(args.paginationOpts);
     }
-    if (args.type && args.status) {
-      return await ctx.db.query("tests").withIndex("by_user_type_status_created", (q) => q.eq("userId", user._id).eq("testType", args.type!).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
-    }
-    if (args.type) return await ctx.db.query("tests").withIndex("by_user_type_created", (q) => q.eq("userId", user._id).eq("testType", args.type!)).order("desc").paginate(args.paginationOpts);
-    if (args.status) return await ctx.db.query("tests").withIndex("by_user_status_created", (q) => q.eq("userId", user._id).eq("status", args.status!)).order("desc").paginate(args.paginationOpts);
-    return await ctx.db.query("tests").withIndex("by_user_created", (q) => q.eq("userId", user._id)).order("desc").paginate(args.paginationOpts);
+    return { ...result, page: result.page.map(publicTest) };
   },
 });
 
@@ -211,7 +255,7 @@ export const get = query({
       disagreements: synthesis.disagreements,
       nextActions: synthesis.nextActions,
     } : null;
-    return { test, options: optionRows.sort((a, b) => a.position - b.position), aggregate, synthesis: publicSynthesis };
+    return { test: publicTest(test), options: optionRows.sort((a, b) => a.position - b.position), aggregate, synthesis: publicSynthesis };
   },
 });
 
@@ -227,6 +271,9 @@ export const getResponses = query({
         choiceOptionId: response.choiceOptionId ?? null,
         answer: response.answer ?? null,
         feedback: response.feedback,
+        confidence: response.confidence ?? null,
+        decisionFactors: response.decisionFactors ?? [],
+        missingEvidence: response.missingEvidence ?? [],
         createdAt: response.createdAt,
         persona: persona ? {
           ordinal: persona.ordinal,
@@ -236,6 +283,8 @@ export const getResponses = query({
           interests: persona.interests,
           constraints: persona.constraints,
           pointOfView: persona.pointOfView,
+          segmentName: persona.profile?.segmentName ?? null,
+          categoryExperience: persona.profile?.categoryExperience ?? null,
         } : null,
       };
     }));

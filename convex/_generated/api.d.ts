@@ -20,6 +20,7 @@ import type * as lib_credits from "../lib/credits.js";
 import type * as lib_idempotency from "../lib/idempotency.js";
 import type * as lib_modelRegistry from "../lib/modelRegistry.js";
 import type * as lib_panel from "../lib/panel.js";
+import type * as lib_panelGeneration from "../lib/panelGeneration.js";
 import type * as lib_pricing from "../lib/pricing.js";
 import type * as lib_synthesisEvidence from "../lib/synthesisEvidence.js";
 import type * as lib_synthesisGuidance from "../lib/synthesisGuidance.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/idempotency": typeof lib_idempotency;
   "lib/modelRegistry": typeof lib_modelRegistry;
   "lib/panel": typeof lib_panel;
+  "lib/panelGeneration": typeof lib_panelGeneration;
   "lib/pricing": typeof lib_pricing;
   "lib/synthesisEvidence": typeof lib_synthesisEvidence;
   "lib/synthesisGuidance": typeof lib_synthesisGuidance;

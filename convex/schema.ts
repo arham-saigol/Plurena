@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { audienceBlueprintValidator, personaProfileValidator } from "./lib/panel";
 
 const audience = v.object({
   name: v.optional(v.string()),
@@ -132,6 +133,12 @@ export default defineSchema({
     failedCount: v.number(),
     rerunOf: v.optional(v.id("tests")),
     reusedPanel: v.boolean(),
+    panelVersion: v.optional(v.string()),
+    panelBlueprint: v.optional(audienceBlueprintValidator),
+    panelReadyAt: v.optional(v.number()),
+    panelBuildAttemptCount: v.optional(v.number()),
+    panelBuildLeaseToken: v.optional(v.string()),
+    panelBuildLeaseExpiresAt: v.optional(v.number()),
     launchedAt: v.number(),
     completedAt: v.optional(v.number()),
     synthesisLeaseToken: v.optional(v.string()),
@@ -167,6 +174,7 @@ export default defineSchema({
     habits: v.array(v.string()),
     constraints: v.array(v.string()),
     pointOfView: v.string(),
+    profile: v.optional(personaProfileValidator),
     sourcePersonaId: v.optional(v.id("personas")),
   }).index("by_test", ["testId"]).index("by_user", ["userId"]),
 
@@ -198,6 +206,13 @@ export default defineSchema({
     choiceOptionId: v.optional(v.id("options")),
     answer: v.optional(v.string()),
     feedback: v.array(v.string()),
+    confidence: v.optional(v.number()),
+    decisionFactors: v.optional(v.array(v.object({
+      factor: v.string(),
+      influence: v.union(v.literal("positive"), v.literal("neutral"), v.literal("negative"), v.literal("uncertain")),
+      reason: v.string(),
+    }))),
+    missingEvidence: v.optional(v.array(v.string())),
     provider: v.string(),
     model: v.string(),
     inputTokens: v.optional(v.number()),
@@ -222,6 +237,24 @@ export default defineSchema({
     estimatedCostUsd: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_assignment", ["assignmentId"]),
+
+  panelBuildAttempts: defineTable({
+    testId: v.id("tests"),
+    stage: v.string(),
+    batch: v.optional(v.number()),
+    buildAttempt: v.number(),
+    provider: v.string(),
+    model: v.string(),
+    attempt: v.number(),
+    status: v.union(v.literal("succeeded"), v.literal("retryable_error"), v.literal("failed")),
+    httpStatus: v.optional(v.number()),
+    errorCode: v.optional(v.string()),
+    latencyMs: v.number(),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    estimatedCostUsd: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_test", ["testId"]),
 
   synthesisAttempts: defineTable({
     testId: v.id("tests"),

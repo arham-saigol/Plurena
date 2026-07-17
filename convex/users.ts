@@ -159,6 +159,12 @@ export const continueAccountDeletion = internalMutation({
 
     const test = await ctx.db.query("tests").withIndex("by_user_created", (q) => q.eq("userId", user._id)).first();
     if (test) {
+      const panelBuildAttempts = await ctx.db.query("panelBuildAttempts").withIndex("by_test", (q) => q.eq("testId", test._id)).take(DELETION_BATCH_SIZE);
+      if (panelBuildAttempts.length) {
+        for (const attempt of panelBuildAttempts) await ctx.db.delete(attempt._id);
+        await scheduleDeletionContinuation(ctx, request._id);
+        return { complete: false };
+      }
       const synthesisAttempts = await ctx.db.query("synthesisAttempts").withIndex("by_test", (q) => q.eq("testId", test._id)).take(DELETION_BATCH_SIZE);
       if (synthesisAttempts.length) {
         for (const attempt of synthesisAttempts) await ctx.db.delete(attempt._id);

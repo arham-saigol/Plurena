@@ -4,9 +4,179 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { aggregateComparison, aggregateOpenEnded } from "./lib/aggregation";
 import { applyCreditEntry } from "./lib/credits";
+import { PANEL_VERSION, audienceBlueprintValidator, generatedProfileValidator, legacyPersonaFields } from "./lib/panel";
 
 const synthesize = internal.jobs.synthesize;
 const runRespondent = internal.jobs.runRespondent;
+const buildPanel = internal.jobs.buildPanel;
+
+export const loadPanelBuild = internalQuery({
+  args: { testId: v.id("tests") },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.panelVersion !== PANEL_VERSION || test.panelReadyAt || test.status !== "queued") return null;
+    const [personas, options] = await Promise.all([
+      ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(250),
+      ctx.db.query("options").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(5),
+    ]);
+    if (personas.length !== test.panelSize) return null;
+    return {
+      test,
+      slots: personas.sort((a, b) => a.ordinal - b.ordinal).map((persona) => ({
+        ordinal: persona.ordinal,
+        age: persona.age,
+        location: persona.location,
+        gender: persona.gender,
+      })),
+      options: options.sort((a, b) => a.position - b.position).map((option) => ({ label: option.label, text: option.text })),
+    };
+  },
+});
+
+export const beginPanelBuild = internalMutation({
+  args: { testId: v.id("tests"), leaseToken: v.string() },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.panelVersion !== PANEL_VERSION || test.panelReadyAt || test.status !== "queued") return false;
+    const now = Date.now();
+    if (test.panelBuildLeaseExpiresAt && test.panelBuildLeaseExpiresAt > now) return false;
+    const attemptCount = (test.panelBuildAttemptCount ?? 0) + 1;
+    if (attemptCount > 2) {
+      await failAndRefundTest(ctx, test, "Audience panel could not be generated");
+      return false;
+    }
+    const leaseExpiresAt = now + 12 * 60 * 1_000;
+    await ctx.db.patch(test._id, {
+      panelBuildAttemptCount: attemptCount,
+      panelBuildLeaseToken: args.leaseToken,
+      panelBuildLeaseExpiresAt: leaseExpiresAt,
+    });
+    await ctx.scheduler.runAfter(12 * 60 * 1_000 + 1_000, internal.testInternals.recoverPanelBuild, { testId: test._id, leaseToken: args.leaseToken });
+    return true;
+  },
+});
+
+export const renewPanelBuild = internalMutation({
+  args: { testId: v.id("tests"), leaseToken: v.string() },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.status !== "queued" || test.panelReadyAt || test.panelBuildLeaseToken !== args.leaseToken) return false;
+    await ctx.db.patch(test._id, { panelBuildLeaseExpiresAt: Date.now() + 12 * 60 * 1_000 });
+    return true;
+  },
+});
+
+export const completePanelBuild = internalMutation({
+  args: {
+    testId: v.id("tests"),
+    leaseToken: v.string(),
+    blueprint: audienceBlueprintValidator,
+    profiles: v.array(generatedProfileValidator),
+  },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.status !== "queued" || test.panelReadyAt || test.panelBuildLeaseToken !== args.leaseToken) return false;
+    const [personas, assignments] = await Promise.all([
+      ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(250),
+      ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(250),
+    ]);
+    const profileOrdinals = new Set(args.profiles.map((profile) => profile.ordinal));
+    if (personas.length !== test.panelSize || assignments.length !== test.panelSize || args.profiles.length !== test.panelSize || profileOrdinals.size !== test.panelSize) {
+      throw new Error("INCOMPLETE_GENERATED_PANEL");
+    }
+    const personaByOrdinal = new Map(personas.map((persona) => [persona.ordinal, persona]));
+    for (const generated of args.profiles) {
+      const persona = personaByOrdinal.get(generated.ordinal);
+      if (!persona) throw new Error("INVALID_PROFILE_ORDINAL");
+      await ctx.db.patch(persona._id, { profile: generated.profile, ...legacyPersonaFields(generated.profile) });
+    }
+    const now = Date.now();
+    await ctx.db.patch(test._id, {
+      panelBlueprint: args.blueprint,
+      panelReadyAt: now,
+      panelBuildLeaseToken: undefined,
+      panelBuildLeaseExpiresAt: undefined,
+    });
+    for (const assignment of assignments.sort((a, b) => a.ordinal - b.ordinal)) {
+      await ctx.scheduler.runAfter(assignment.ordinal * 250, runRespondent, { assignmentId: assignment._id });
+    }
+    return true;
+  },
+});
+
+export const retryPanelBuild = internalMutation({
+  args: { testId: v.id("tests"), leaseToken: v.string() },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.status !== "queued" || test.panelReadyAt || test.panelBuildLeaseToken !== args.leaseToken) return false;
+    await ctx.db.patch(test._id, { panelBuildLeaseToken: undefined, panelBuildLeaseExpiresAt: undefined });
+    if ((test.panelBuildAttemptCount ?? 0) >= 2) {
+      await failAndRefundTest(ctx, test, "Audience panel could not be generated");
+      return false;
+    }
+    await ctx.scheduler.runAfter(5_000, buildPanel, { testId: test._id });
+    return true;
+  },
+});
+
+export const recoverPanelBuild = internalMutation({
+  args: { testId: v.id("tests"), leaseToken: v.string() },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test || test.status !== "queued" || test.panelReadyAt || test.panelBuildLeaseToken !== args.leaseToken || (test.panelBuildLeaseExpiresAt ?? 0) > Date.now()) return false;
+    await ctx.db.patch(test._id, { panelBuildLeaseToken: undefined, panelBuildLeaseExpiresAt: undefined });
+    if ((test.panelBuildAttemptCount ?? 0) >= 2) {
+      await failAndRefundTest(ctx, test, "Audience panel generation timed out");
+      return false;
+    }
+    await ctx.scheduler.runAfter(0, buildPanel, { testId: test._id });
+    return true;
+  },
+});
+
+async function failAndRefundTest(ctx: MutationCtx, test: Doc<"tests">, note: string) {
+  await refundTest(ctx, test, note);
+  const assignments = await ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", test._id)).take(250);
+  const now = Date.now();
+  for (const assignment of assignments) {
+    if (assignment.status === "queued" || assignment.status === "running") {
+      await ctx.db.patch(assignment._id, { status: "failed", completedAt: now, leaseToken: undefined, leaseExpiresAt: undefined });
+    }
+  }
+  await ctx.db.patch(test._id, {
+    status: "failed",
+    completedAt: test.completedAt ?? now,
+    panelBuildLeaseToken: undefined,
+    panelBuildLeaseExpiresAt: undefined,
+  });
+}
+
+async function refundTest(ctx: MutationCtx, test: Doc<"tests">, note: string) {
+  const idempotencyKey = `test:${test._id}:refund`;
+  const existingRefund = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q) =>
+    q.eq("userId", test.userId).eq("idempotencyKey", idempotencyKey),
+  ).unique();
+  if (existingRefund) return;
+  const user = await ctx.db.get(test.userId);
+  if (!user) return;
+  const balanceCents = applyCreditEntry(
+    { balanceCents: user.balanceCents, appliedKeys: new Set<string>() },
+    idempotencyKey,
+    test.priceCents,
+  ).balanceCents;
+  const now = Date.now();
+  await ctx.db.insert("creditLedger", {
+    userId: test.userId,
+    amountCents: test.priceCents,
+    balanceAfterCents: balanceCents,
+    kind: "test_refund",
+    idempotencyKey,
+    testId: test._id,
+    note,
+    createdAt: now,
+  });
+  await ctx.db.patch(user._id, { balanceCents, updatedAt: now });
+}
 
 export const loadAssignment = internalQuery({
   args: { assignmentId: v.id("assignments") },
@@ -34,6 +204,8 @@ export const startAssignment = internalMutation({
   handler: async (ctx, args) => {
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment || assignment.status === "completed" || assignment.status === "failed") return false;
+    const test = await ctx.db.get(assignment.testId);
+    if (!test || (test.panelVersion && !test.panelReadyAt)) return false;
     const now = Date.now();
     if (assignment.status === "running" && (assignment.leaseExpiresAt ?? 0) > now) return false;
     if (assignment.attemptCount >= 2) {
@@ -43,8 +215,7 @@ export const startAssignment = internalMutation({
     }
     const leaseExpiresAt = now + 8 * 60 * 1_000;
     await ctx.db.patch(args.assignmentId, { status: "running", attemptCount: assignment.attemptCount + 1, leaseToken: args.leaseToken, leaseExpiresAt });
-    const test = await ctx.db.get(assignment.testId);
-    if (test?.status === "queued") await ctx.db.patch(test._id, { status: "running" });
+    if (test.status === "queued") await ctx.db.patch(test._id, { status: "running" });
     await ctx.scheduler.runAfter(8 * 60 * 1_000 + 1_000, internal.testInternals.recoverAssignment, { assignmentId: assignment._id, leaseToken: args.leaseToken });
     return true;
   },
@@ -63,6 +234,26 @@ export const recoverAssignment = internalMutation({
     await ctx.db.patch(assignment._id, { status: "queued", leaseToken: undefined, leaseExpiresAt: undefined });
     await ctx.scheduler.runAfter(0, runRespondent, { assignmentId: assignment._id });
   },
+});
+
+export const recordPanelBuildAttempt = internalMutation({
+  args: {
+    testId: v.id("tests"),
+    stage: v.string(),
+    batch: v.optional(v.number()),
+    buildAttempt: v.number(),
+    provider: v.string(),
+    model: v.string(),
+    attempt: v.number(),
+    status: v.union(v.literal("succeeded"), v.literal("retryable_error"), v.literal("failed")),
+    httpStatus: v.optional(v.number()),
+    errorCode: v.optional(v.string()),
+    latencyMs: v.number(),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    estimatedCostUsd: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => await ctx.db.insert("panelBuildAttempts", { ...args, createdAt: Date.now() }),
 });
 
 export const recordAttempt = internalMutation({
@@ -90,6 +281,13 @@ export const finishAssignment = internalMutation({
     choiceOptionId: v.optional(v.id("options")),
     answer: v.optional(v.string()),
     feedback: v.array(v.string()),
+    confidence: v.optional(v.number()),
+    decisionFactors: v.optional(v.array(v.object({
+      factor: v.string(),
+      influence: v.union(v.literal("positive"), v.literal("neutral"), v.literal("negative"), v.literal("uncertain")),
+      reason: v.string(),
+    }))),
+    missingEvidence: v.optional(v.array(v.string())),
     provider: v.string(),
     model: v.string(),
     inputTokens: v.optional(v.number()),
@@ -112,6 +310,9 @@ export const finishAssignment = internalMutation({
       choiceOptionId: args.choiceOptionId,
       answer: args.answer,
       feedback: args.feedback,
+      confidence: args.confidence,
+      decisionFactors: args.decisionFactors,
+      missingEvidence: args.missingEvidence,
       provider: args.provider,
       model: args.model,
       inputTokens: args.inputTokens,
@@ -158,9 +359,10 @@ export const aggregate = internalMutation({
     const test = await ctx.db.get(args.testId);
     if (!test) return null;
     const existing = await ctx.db.query("aggregates").withIndex("by_test", (q) => q.eq("testId", args.testId)).unique();
-    const [options, responses] = await Promise.all([
-      ctx.db.query("options").withIndex("by_test", (q) => q.eq("testId", args.testId)).collect(),
-      ctx.db.query("responses").withIndex("by_test", (q) => q.eq("testId", args.testId)).collect(),
+    const [options, responses, personas] = await Promise.all([
+      ctx.db.query("options").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(5),
+      ctx.db.query("responses").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(250),
+      ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", args.testId)).take(250),
     ]);
     const orderedOptions = options.sort((a, b) => a.position - b.position);
     const normalized = responses.map((item) => ({ choiceOptionId: item.choiceOptionId ? String(item.choiceOptionId) : undefined, answer: item.answer, feedback: item.feedback }));
@@ -168,7 +370,12 @@ export const aggregate = internalMutation({
     if (!existing) {
       await ctx.db.insert("aggregates", { testId: test._id, userId: test.userId, kind: test.testType === "compare" ? "comparison" : "open_ended", data, responseCount: responses.length, generatedAt: Date.now() });
     }
-    return { test, options: orderedOptions, responses, data };
+    const personaById = new Map(personas.map((persona) => [String(persona._id), persona]));
+    const evidenceResponses = responses.map((response) => {
+      const persona = personaById.get(String(response.personaId));
+      return { ...response, personaOrdinal: persona?.ordinal, segmentName: persona?.profile?.segmentName };
+    });
+    return { test, options: orderedOptions, responses: evidenceResponses, data };
   },
 });
 
@@ -249,34 +456,7 @@ export const saveSynthesis = internalMutation({
       createdAt: Date.now(),
     });
     const status = test.completedCount > 0 ? (test.failedCount > 0 ? "partial" : "completed") : "failed";
-    if (status === "failed") {
-      const idempotencyKey = `test:${test._id}:refund`;
-      const existingRefund = await ctx.db.query("creditLedger").withIndex("by_user_idempotency", (q) =>
-        q.eq("userId", test.userId).eq("idempotencyKey", idempotencyKey),
-      ).unique();
-      if (!existingRefund) {
-        const user = await ctx.db.get(test.userId);
-        if (user) {
-          const balanceCents = applyCreditEntry(
-            { balanceCents: user.balanceCents, appliedKeys: new Set<string>() },
-            idempotencyKey,
-            test.priceCents,
-          ).balanceCents;
-          const now = Date.now();
-          await ctx.db.insert("creditLedger", {
-            userId: test.userId,
-            amountCents: test.priceCents,
-            balanceAfterCents: balanceCents,
-            kind: "test_refund",
-            idempotencyKey,
-            testId: test._id,
-            note: "No usable panel responses",
-            createdAt: now,
-          });
-          await ctx.db.patch(user._id, { balanceCents, updatedAt: now });
-        }
-      }
-    }
+    if (status === "failed") await refundTest(ctx, test, "No usable panel responses");
     await ctx.db.patch(test._id, { status, completedAt: test.completedAt ?? Date.now(), synthesisLeaseToken: undefined, synthesisLeaseExpiresAt: undefined });
   },
 });

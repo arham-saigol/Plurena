@@ -72,8 +72,12 @@ describe("Convex transaction boundaries", () => {
         completedCount: 1,
         failedCount: 19,
         reusedPanel: false,
+        panelBuildLeaseToken: "private-panel-lease",
+        panelBuildLeaseExpiresAt: Date.now() + 60_000,
         launchedAt: Date.now(),
         completedAt: Date.now(),
+        synthesisLeaseToken: "private-synthesis-lease",
+        synthesisLeaseExpiresAt: Date.now() + 60_000,
       });
       const personaId = await ctx.db.insert("personas", { testId, userId, ordinal: 0, age: 32, location: "US", gender: "female", interests: ["design"], habits: [], constraints: ["budget"], pointOfView: "Practical buyer" });
       const assignmentId = await ctx.db.insert("assignments", { testId, userId, personaId, ordinal: 0, shuffledOptionIds: [], modelKey: "internal-assignment-model", status: "completed", attemptCount: 1, createdAt: Date.now(), completedAt: Date.now() });
@@ -87,6 +91,10 @@ describe("Convex transaction boundaries", () => {
 
     expect(detail.synthesis).not.toHaveProperty("provider");
     expect(detail.synthesis).not.toHaveProperty("model");
+    expect(detail.test).not.toHaveProperty("panelBuildLeaseToken");
+    expect(detail.test).not.toHaveProperty("panelBuildLeaseExpiresAt");
+    expect(detail.test).not.toHaveProperty("synthesisLeaseToken");
+    expect(detail.test).not.toHaveProperty("synthesisLeaseExpiresAt");
     expect(responses.page[0]).not.toHaveProperty("provider");
     expect(responses.page[0]).not.toHaveProperty("model");
     expect(JSON.stringify({ detail, responses })).not.toContain("internal-response-model");
@@ -111,7 +119,7 @@ describe("Convex transaction boundaries", () => {
     await expect(t.run(async (ctx) => (await ctx.storage.get(invalidStorageId)) !== null)).resolves.toBe(true);
   });
 
-  it("creates the full 250-person panel within transaction limits", async () => {
+  it("creates and completes the full 250-person panel within transaction limits", async () => {
     const t = makeTest();
     const user = t.withIdentity({ subject: "large-panel", tokenIdentifier: "issuer|large-panel" });
     const userId = await user.mutation(api.users.ensureCurrent, {});
@@ -125,14 +133,101 @@ describe("Convex transaction boundaries", () => {
       panelSize: 250,
       reusePanel: false,
     });
-    const counts = await t.run(async (ctx) => ({
-      personas: (await ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", result.testId)).collect()).length,
-      assignments: (await ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", result.testId)).collect()).length,
-      user: await ctx.db.get(userId),
+    expect(await t.mutation(internal.testInternals.beginPanelBuild, { testId: result.testId, leaseToken: "panel-lease" })).toBe(true);
+    const blueprint = {
+      version: "audience-simulation-v1" as const,
+      audienceInterpretation: "Frequent online shoppers at different purchase and category-experience stages.",
+      researchContext: "Evaluating improvements to an online shopping product.",
+      assumptions: ["The brief does not specify a purchase horizon."],
+      variationDimensions: ["experience", "purchase stage", "evidence threshold"],
+      segments: [
+        { name: "Explorers", targetShare: 34, summary: "Early-stage shoppers", categoryExperience: "low" as const, usageContext: "Shops occasionally", currentSolution: "General marketplaces", purchaseStage: "early research", goals: ["Understand choices", "Avoid mistakes"], painPoints: ["Unclear claims", "Too many options"], triggers: ["New need"], constraints: ["Limited time", "Fixed budget"], priorBeliefs: ["Reviews can be unreliable"], evidenceThresholds: ["Specific owner evidence"], uncertainties: ["Which features matter"], decisionCriteria: [{ criterion: "clarity", weight: 40 }, { criterion: "proof", weight: 35 }, { criterion: "price", weight: 25 }] },
+        { name: "Comparers", targetShare: 33, summary: "Active comparison shoppers", categoryExperience: "moderate" as const, usageContext: "Compares before purchases", currentSolution: "Several shopping sites", purchaseStage: "actively comparing", goals: ["Find the best fit", "Reduce effort"], painPoints: ["Conflicting reviews", "Hidden tradeoffs"], triggers: ["Current option is inadequate"], constraints: ["Limited time", "Defined budget"], priorBeliefs: ["Claims need independent proof"], evidenceThresholds: ["Comparable specifications"], uncertainties: ["Long-term quality"], decisionCriteria: [{ criterion: "fit", weight: 40 }, { criterion: "proof", weight: 35 }, { criterion: "price", weight: 25 }] },
+        { name: "Experienced buyers", targetShare: 33, summary: "Selective repeat buyers", categoryExperience: "high" as const, usageContext: "Buys within a familiar category", currentSolution: "A known incumbent", purchaseStage: "selective consideration", goals: ["Improve a specific weakness", "Keep what works"], painPoints: ["Marginal upgrades", "Marketing noise"], triggers: ["A concrete limitation"], constraints: ["Won't disrupt workflow", "Requires clear gain"], priorBeliefs: ["Most upgrades are incremental"], evidenceThresholds: ["Detailed comparative tests"], uncertainties: ["Reliability over time"], decisionCriteria: [{ criterion: "improvement", weight: 45 }, { criterion: "reliability", weight: 35 }, { criterion: "price", weight: 20 }] },
+      ],
+    };
+    const profiles = Array.from({ length: 250 }, (_, ordinal) => ({
+      ordinal,
+      profile: {
+        segmentName: blueprint.segments[ordinal % blueprint.segments.length].name,
+        categoryExperience: blueprint.segments[ordinal % blueprint.segments.length].categoryExperience,
+        usageContext: `Shopping situation ${ordinal}`,
+        currentSolution: `Current solution ${ordinal}`,
+        purchaseStage: "actively considering",
+        goals: ["Make a suitable choice", "Avoid wasted effort"],
+        painPoints: ["Unclear tradeoffs", "Weak supporting evidence"],
+        trigger: `Decision trigger ${ordinal}`,
+        decisionCriteria: [{ criterion: "fit", weight: 40 }, { criterion: "proof", weight: 35 }, { criterion: "effort", weight: 25 }],
+        constraints: ["Limited time", "Defined budget"],
+        priorBeliefs: ["Specific evidence is more useful than broad claims"],
+        evidenceThreshold: "Concrete comparative evidence",
+        uncertainties: ["Long-term performance"],
+        responseStyle: "analytical" as const,
+        pointOfView: `Looks for a concrete improvement ${ordinal}`,
+      },
     }));
+    expect(await t.mutation(internal.testInternals.completePanelBuild, { testId: result.testId, leaseToken: "panel-lease", blueprint, profiles })).toBe(true);
+    const counts = await t.run(async (ctx) => {
+      const personas = await ctx.db.query("personas").withIndex("by_test", (q) => q.eq("testId", result.testId)).collect();
+      return {
+        personas: personas.length,
+        enrichedPersonas: personas.filter((persona) => persona.profile).length,
+        assignments: (await ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", result.testId)).collect()).length,
+        test: await ctx.db.get(result.testId),
+        user: await ctx.db.get(userId),
+      };
+    });
     expect(counts.personas).toBe(250);
+    expect(counts.enrichedPersonas).toBe(250);
     expect(counts.assignments).toBe(250);
+    expect(counts.test?.panelReadyAt).toBeTypeOf("number");
     expect(counts.user?.balanceCents).toBe(1_200);
+  });
+
+  it("retries panel generation once and refunds an invalid panel exactly once", async () => {
+    const t = makeTest();
+    const user = t.withIdentity({ subject: "panel-refund", tokenIdentifier: "issuer|panel-refund" });
+    const userId = await user.mutation(api.users.ensureCurrent, {});
+    await t.run(async (ctx) => await ctx.db.patch(userId, { balanceCents: 1_100 }));
+    const { testId } = await user.mutation(api.tests.launch, {
+      clientRequestId: "panel-refund-request",
+      title: "Which product direction is more useful?",
+      testType: "compare",
+      options: [
+        { label: "First", optionType: "text", text: "First direction" },
+        { label: "Second", optionType: "text", text: "Second direction" },
+      ],
+      audience: { locations: ["US"], description: "People actively comparing products", gender: "mixed", minAge: 20, maxAge: 50 },
+      panelSize: 20,
+    });
+    await expect(user.mutation(api.tests.launch, {
+      clientRequestId: "unfinished-panel-rerun",
+      title: "Which product direction is more useful?",
+      testType: "compare",
+      options: [
+        { label: "First", optionType: "text", text: "First direction" },
+        { label: "Second", optionType: "text", text: "Second direction" },
+      ],
+      audience: { locations: ["US"], description: "People actively comparing products", gender: "mixed", minAge: 20, maxAge: 50 },
+      panelSize: 20,
+      rerunOf: testId,
+      reusePanel: true,
+    })).rejects.toThrow("SAME_PANEL_NOT_READY");
+    expect(await t.mutation(internal.testInternals.beginPanelBuild, { testId, leaseToken: "first-lease" })).toBe(true);
+    expect(await t.mutation(internal.testInternals.retryPanelBuild, { testId, leaseToken: "first-lease" })).toBe(true);
+    expect(await t.mutation(internal.testInternals.beginPanelBuild, { testId, leaseToken: "second-lease" })).toBe(true);
+    expect(await t.mutation(internal.testInternals.retryPanelBuild, { testId, leaseToken: "second-lease" })).toBe(false);
+    expect(await t.mutation(internal.testInternals.retryPanelBuild, { testId, leaseToken: "second-lease" })).toBe(false);
+    const result = await t.run(async (ctx) => ({
+      test: await ctx.db.get(testId),
+      user: await ctx.db.get(userId),
+      ledger: await ctx.db.query("creditLedger").withIndex("by_user_created", (q) => q.eq("userId", userId)).collect(),
+      assignments: await ctx.db.query("assignments").withIndex("by_test", (q) => q.eq("testId", testId)).collect(),
+    }));
+    expect(result.test?.status).toBe("failed");
+    expect(result.user?.balanceCents).toBe(1_100);
+    expect(result.ledger.filter((entry) => entry.kind === "test_refund")).toHaveLength(1);
+    expect(new Set(result.assignments.map((assignment) => assignment.status))).toEqual(new Set(["failed"]));
   });
 
   it("does not create another checkout for a terminal payment", async () => {
@@ -359,6 +454,7 @@ describe("Convex transaction boundaries", () => {
       const assignmentId = await ctx.db.insert("assignments", { testId, userId, personaId, ordinal: 0, shuffledOptionIds: [optionId], modelKey: "test", status: "completed", attemptCount: 1, createdAt: Date.now(), completedAt: Date.now() });
       await ctx.db.insert("responses", { testId, userId, assignmentId, personaId, answer: "Private answer", feedback: ["Private feedback"], provider: "test", model: "test", latencyMs: 1, createdAt: Date.now() });
       await ctx.db.insert("modelAttempts", { testId, assignmentId, provider: "test", model: "test", attempt: 1, status: "succeeded", createdAt: Date.now() });
+      await ctx.db.insert("panelBuildAttempts", { testId, stage: "blueprint", buildAttempt: 1, provider: "test", model: "test", attempt: 1, status: "succeeded", latencyMs: 1, createdAt: Date.now() });
       await ctx.db.insert("synthesisAttempts", { testId, provider: "test", model: "test", attempt: 1, status: "succeeded", latencyMs: 1, createdAt: Date.now() });
       await ctx.db.insert("aggregates", { testId, userId, kind: "open_ended", data: {}, responseCount: 1, generatedAt: Date.now() });
       await ctx.db.insert("aggregates", { testId, userId, kind: "open_ended", data: {}, responseCount: 1, generatedAt: Date.now() });
@@ -384,6 +480,7 @@ describe("Convex transaction boundaries", () => {
       assignments: await ctx.db.query("assignments").collect(),
       responses: await ctx.db.query("responses").collect(),
       attempts: await ctx.db.query("modelAttempts").collect(),
+      panelBuildAttempts: await ctx.db.query("panelBuildAttempts").collect(),
       synthesisAttempts: await ctx.db.query("synthesisAttempts").collect(),
       aggregates: await ctx.db.query("aggregates").collect(),
       syntheses: await ctx.db.query("syntheses").collect(),
@@ -403,6 +500,7 @@ describe("Convex transaction boundaries", () => {
       assignments: [],
       responses: [],
       attempts: [],
+      panelBuildAttempts: [],
       synthesisAttempts: [],
       aggregates: [],
       syntheses: [],

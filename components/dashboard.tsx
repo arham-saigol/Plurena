@@ -219,7 +219,7 @@ function TestRow({ test, renderedAt }: { test: Doc<"tests">; renderedAt: number 
         {running && (
           <div className="mt-3 hidden sm:block">
             <div className="mb-1.5 flex justify-between gap-3 text-[11px] text-muted-foreground">
-              <span aria-live="polite">{test.status === "synthesizing" ? "Writing synthesis" : done ? `${test.completedCount} of ${test.panelSize} responses` : "Awaiting responses"}</span>
+              <span aria-live="polite">{test.status === "synthesizing" ? "Writing synthesis" : !test.panelReadyAt && test.panelVersion === "audience-simulation-v1" ? "Designing audience panel" : done ? `${test.completedCount} of ${test.panelSize} responses` : "Awaiting responses"}</span>
               <span className="font-medium tabular-nums text-foreground">{percent(done, test.panelSize)}%</span>
             </div>
             <Progress className="h-1" value={percent(done, test.panelSize)} aria-label="Panel progress" aria-valuemin={0} aria-valuemax={test.panelSize} aria-valuenow={done} />
