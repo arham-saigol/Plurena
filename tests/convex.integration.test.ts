@@ -230,6 +230,16 @@ describe("Convex transaction boundaries", () => {
     expect(new Set(result.assignments.map((assignment) => assignment.status))).toEqual(new Set(["failed"]));
   });
 
+  it("accepts only $5 top-up increments from $5 through $500", async () => {
+    const t = makeTest();
+    const buyer = t.withIdentity({ subject: "custom-top-up", tokenIdentifier: "issuer|custom-top-up" });
+    await buyer.mutation(api.users.ensureCurrent, {});
+    expect(await buyer.mutation(api.payments.createIntent, { requestId: "minimum-top-up", amountCents: 500 })).toMatchObject({ amountCents: 500 });
+    expect(await buyer.mutation(api.payments.createIntent, { requestId: "maximum-top-up", amountCents: 50_000 })).toMatchObject({ amountCents: 50_000 });
+    await expect(buyer.mutation(api.payments.createIntent, { requestId: "partial-increment", amountCents: 750 })).rejects.toThrow("INVALID_TOP_UP");
+    await expect(buyer.mutation(api.payments.createIntent, { requestId: "above-maximum", amountCents: 50_500 })).rejects.toThrow("INVALID_TOP_UP");
+  });
+
   it("does not create another checkout for a terminal payment", async () => {
     const t = makeTest();
     const buyer = t.withIdentity({ subject: "terminal-buyer", tokenIdentifier: "issuer|terminal-buyer" });

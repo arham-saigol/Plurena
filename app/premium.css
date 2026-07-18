@@ -278,6 +278,8 @@
 .amount-options { gap: 8px; }
 .amount-options button { height: 46px; border-radius: 8px; }
 .amount-options button.selected { border-color: var(--primary); color: var(--primary-foreground); background: var(--primary); box-shadow: 0 3px 10px color-mix(in srgb, var(--primary) 20%, transparent); }
+.custom-amount { padding: 10px 12px; border-radius: 8px; }
+.amount-stepper button { border-radius: 7px; }
 .onboarding-dialog { padding: 32px; border-radius: 16px; }
 .gift-mark { width: 40px; height: 40px; border-radius: 10px; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
 .onboarding-dialog [data-slot="dialog-title"] { font-size: 25px; line-height: 1.15; letter-spacing: -.04em; }

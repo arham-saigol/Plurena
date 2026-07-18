@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIN_TOP_UP_CENTS, ONBOARDING_BONUS_CENTS, PANEL_PRICES, PRICE_VERSION, quotePanel } from "@/convex/lib/pricing";
+import { isValidTopUpAmount, MAX_TOP_UP_CENTS, MIN_TOP_UP_CENTS, ONBOARDING_BONUS_CENTS, PANEL_PRICES, PRICE_VERSION, TOP_UP_INCREMENT_CENTS, quotePanel } from "@/convex/lib/pricing";
 
 describe("server panel pricing", () => {
   it("keeps every fixed panel position and its exact price", () => {
@@ -12,7 +12,16 @@ describe("server panel pricing", () => {
   it("makes the earned bonus cover one minimum panel", () => {
     expect(ONBOARDING_BONUS_CENTS).toBe(600);
     expect(ONBOARDING_BONUS_CENTS).toBeGreaterThanOrEqual(quotePanel(20).priceCents);
-    expect(MIN_TOP_UP_CENTS).toBe(1_000);
+    expect(MIN_TOP_UP_CENTS).toBe(500);
+  });
+  it("accepts top-ups from $5 to $500 in $5 increments", () => {
+    expect(TOP_UP_INCREMENT_CENTS).toBe(500);
+    expect(MAX_TOP_UP_CENTS).toBe(50_000);
+    expect(isValidTopUpAmount(500)).toBe(true);
+    expect(isValidTopUpAmount(50_000)).toBe(true);
+    expect(isValidTopUpAmount(0)).toBe(false);
+    expect(isValidTopUpAmount(750)).toBe(false);
+    expect(isValidTopUpAmount(50_500)).toBe(false);
   });
   it("rejects arbitrary sizes", () => expect(() => quotePanel(21)).toThrow("INVALID_PANEL_SIZE"));
   it("applies increasing visible discounts", () => {

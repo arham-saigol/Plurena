@@ -1,16 +1,14 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireUser } from "./lib/auth";
-import { MIN_TOP_UP_CENTS } from "./lib/pricing";
+import { isValidTopUpAmount } from "./lib/pricing";
 import { applyCreditEntry } from "./lib/credits";
-
-const ALLOWED_TOP_UPS = new Set([1_000, 2_000, 5_000, 10_000]);
 
 export const createIntent = mutation({
   args: { requestId: v.string(), amountCents: v.number() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (!ALLOWED_TOP_UPS.has(args.amountCents) || args.amountCents < MIN_TOP_UP_CENTS) throw new Error("INVALID_TOP_UP");
+    if (!isValidTopUpAmount(args.amountCents)) throw new Error("INVALID_TOP_UP");
     const existing = await ctx.db.query("payments").withIndex("by_request", (q) => q.eq("requestId", args.requestId)).unique();
     if (existing) {
       if (String(existing.userId) !== String(user._id) || existing.amountCents !== args.amountCents) throw new Error("IDEMPOTENCY_KEY_REUSED");

@@ -18,7 +18,7 @@ The marketing page lives at `/`. `proxy.ts` protects `/dashboard`, `/tests/*`, a
 - Completing both checkbox-only onboarding questions awards $6 once.
 - A 20-person panel costs $5.
 - Panel sizes and prices live only in [`convex/lib/pricing.ts`](convex/lib/pricing.ts).
-- Creem top-ups start at $10. Plurena has no subscription code.
+- Creem top-ups range from $5 to $500 in $5 increments. Plurena has no subscription code.
 - Launch and payment mutations use integer cents, atomic ledger writes, and idempotency keys.
 - Compare tests accept two to five text or image options. Each respondent gets a stable, seeded option order.
 - Image assignments use vision models only.
@@ -82,7 +82,7 @@ OpenCode's documented Go endpoint is fixed in code. Each model route also record
 
 ### 4. Configure Creem
 
-Create one **one-time** USD product priced at $10. Plurena uses product units for the supported $10, $20, $50, and $100 top-ups. Confirm unit quantities on a Creem test checkout before enabling production mode.
+Create one **one-time** USD product priced at $5. Plurena uses product units for top-ups from $5 to $500 in $5 increments, with $10, $20, $50, and $100 presets. Confirm unit quantities on a Creem test checkout before enabling production mode.
 
 Add to `.env.local` and Vercel:
 
@@ -130,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex | Yes | Clerk issuer for the `convex` JWT template |
 | `CREEM_API_KEY` | Vercel | Billing | Checkout API key |
 | `CREEM_WEBHOOK_SECRET` | Vercel | Billing | Webhook HMAC secret |
-| `CREEM_TOPUP_PRODUCT_ID` | Vercel | Billing | Allowlisted $10 one-time product |
+| `CREEM_TOPUP_PRODUCT_ID` | Vercel | Billing | Allowlisted $5 one-time product |
 | `CREEM_TEST_MODE` | Vercel | Billing | Uses Creem test API unless set to `false` |
 | `PAYMENT_WEBHOOK_FORWARD_SECRET` | Vercel + Convex | Billing | Authenticates the verified webhook handoff |
 | `OPENCODE_GO_API_KEY` | Convex | Optional | OpenCode Go provider key |

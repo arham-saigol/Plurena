@@ -2,12 +2,13 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { validatedAppOrigin, validatedCheckoutUrl } from "@/lib/checkout-security";
+import { isValidTopUpAmount, TOP_UP_INCREMENT_CENTS } from "@/convex/lib/pricing";
 import { z } from "zod";
 
 export const runtime = "nodejs";
 
 const { createIntent, claimCheckout, releaseCheckout, attachCheckout } = api.payments;
-const bodySchema = z.object({ amountCents: z.union([z.literal(1000), z.literal(2000), z.literal(5000), z.literal(10000)]), requestId: z.string().uuid() });
+const bodySchema = z.object({ amountCents: z.number().int().refine(isValidTopUpAmount), requestId: z.string().uuid() });
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       headers: { "x-api-key": process.env.CREEM_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({
         product_id: process.env.CREEM_TOPUP_PRODUCT_ID,
-        units: parsed.data.amountCents / 1000,
+        units: parsed.data.amountCents / TOP_UP_INCREMENT_CENTS,
         request_id: intent.requestId,
         success_url: `${appUrl}/dashboard?payment=processing`,
         customer: user?.primaryEmailAddress?.emailAddress ? { email: user.primaryEmailAddress.emailAddress } : undefined,

@@ -4,10 +4,11 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
-import { Gear, Moon, Plus, SignOut, Sun, Wallet } from "@phosphor-icons/react";
+import { Gear, Minus, Moon, Plus, SignOut, Sun, Wallet } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { money, timeAgo } from "@/lib/format";
+import { MAX_TOP_UP_CENTS, MIN_TOP_UP_CENTS, TOP_UP_INCREMENT_CENTS } from "@/convex/lib/pricing";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -84,7 +85,7 @@ function BillingDialog({ balanceCents, onClose }: { balanceCents: number; onClos
   };
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="billing-dialog max-w-md gap-0 overflow-hidden p-0">
     <DialogHeader className="dialog-title"><p className="eyebrow">Billing</p><DialogTitle>{money(balanceCents)} available</DialogTitle><DialogDescription className="sr-only">Add balance and review recent credit activity.</DialogDescription></DialogHeader>
-    <div className="topup-section"><h3>Add balance</h3><p className="muted">One-time payment through Creem. No subscription.</p><div className="amount-options">{[1_000,2_000,5_000,10_000].map((amount) => <Button key={amount} className={selected === amount ? "selected" : ""} variant={selected === amount ? "default" : "outline"} aria-pressed={selected === amount} disabled={busy} onClick={() => setSelected(amount)}>{money(amount)}</Button>)}</div>{error && <p className="form-error" role="alert">{error}</p>}<Button className="w-full" disabled={busy} onClick={addBalance}><Plus size={16} /> {busy ? "Opening checkout…" : `Add ${money(selected)}`}</Button></div>
+    <div className="topup-section"><h3>Add balance</h3><p className="muted">One-time payment through Creem. No subscription.</p><div className="amount-options">{[1_000,2_000,5_000,10_000].map((amount) => <Button key={amount} className={selected === amount ? "selected" : ""} variant={selected === amount ? "default" : "outline"} aria-pressed={selected === amount} disabled={busy} onClick={() => setSelected(amount)}>{money(amount)}</Button>)}</div><div className="custom-amount"><span>Custom amount</span><div className="amount-stepper"><Button variant="outline" aria-label="Decrease top-up amount by $5" disabled={busy || selected <= MIN_TOP_UP_CENTS} onClick={() => setSelected((amount) => Math.max(MIN_TOP_UP_CENTS, amount - TOP_UP_INCREMENT_CENTS))}><Minus /></Button><output aria-label="Selected top-up amount" className="tabular-nums">{money(selected)}</output><Button variant="outline" aria-label="Increase top-up amount by $5" disabled={busy || selected >= MAX_TOP_UP_CENTS} onClick={() => setSelected((amount) => Math.min(MAX_TOP_UP_CENTS, amount + TOP_UP_INCREMENT_CENTS))}><Plus /></Button></div></div>{error && <p className="form-error" role="alert">{error}</p>}<Button className="w-full" disabled={busy} onClick={addBalance}><Plus size={16} /> {busy ? "Opening checkout…" : `Add ${money(selected)}`}</Button></div>
     <div className="ledger"><h3>Recent activity</h3>{ledger === undefined ? <div className="skeleton-row" /> : ledger.length === 0 ? <p className="muted">No credit activity yet.</p> : ledger.map((entry: any) => <div className="ledger-row" key={entry._id}><div><strong>{ledgerLabel(entry.kind)}</strong><span>{timeAgo(entry.createdAt, renderedAt)}</span></div><b className={entry.amountCents > 0 ? "positive" : ""}>{entry.amountCents > 0 ? "+" : ""}{money(entry.amountCents)}</b></div>)}</div>
   </DialogContent></Dialog>;
 }

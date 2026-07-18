@@ -1,6 +1,15 @@
 export const PRICE_VERSION = "panel-v2";
 export const ONBOARDING_BONUS_CENTS = 600;
-export const MIN_TOP_UP_CENTS = 1_000;
+export const MIN_TOP_UP_CENTS = 500;
+export const MAX_TOP_UP_CENTS = 50_000;
+export const TOP_UP_INCREMENT_CENTS = 500;
+
+export function isValidTopUpAmount(amountCents: number) {
+  return Number.isInteger(amountCents)
+    && amountCents >= MIN_TOP_UP_CENTS
+    && amountCents <= MAX_TOP_UP_CENTS
+    && amountCents % TOP_UP_INCREMENT_CENTS === 0;
+}
 
 export const PANEL_PRICES = [
   { size: 20, priceCents: 500, discountPercent: 0 },

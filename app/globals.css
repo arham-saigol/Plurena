@@ -308,6 +308,10 @@ h1, h2, h3, p { margin-top: 0; }
 .amount-options { margin: 15px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
 .amount-options button { height: 42px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; font-size: 11px; font-weight: 600; }
 .amount-options button:hover, .amount-options button.selected { border-color: var(--ink); background: var(--surface-2); }
+.custom-amount { margin: 0 0 15px; padding: 9px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; font-weight: 600; }
+.amount-stepper { display: flex; align-items: center; gap: 8px; }
+.amount-stepper button { width: 32px; height: 32px; padding: 0; }
+.amount-stepper output { min-width: 66px; text-align: center; }
 .ledger { max-height: 290px; overflow-y: auto; border: 0; }
 .ledger-row { padding: 10px 0; display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .ledger-row:last-child { border: 0; }
