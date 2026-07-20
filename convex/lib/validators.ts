@@ -43,6 +43,14 @@ export const workStatusValidator = v.union(
   v.literal("failed"),
 );
 
+export const respondentWorkStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("retrying"),
+  v.literal("running"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
 export const confidenceValidator = v.union(
   v.literal("low"),
   v.literal("medium"),

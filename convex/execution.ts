@@ -22,6 +22,7 @@ import {
 
 const PERSONA_BATCH_SIZE = 20;
 const RESPONDENT_CONCURRENCY = 5;
+const STALE_RESPONDENT_BATCH_SIZE = 50;
 const MAX_WORK_ATTEMPTS = 3;
 
 const personaDataValidator = v.object({
@@ -623,6 +624,27 @@ export const completeRespondent = internalMutation({
   },
 });
 
+export const releaseRespondentRetry = internalMutation({
+  args: {
+    runId: v.id("respondentRuns"),
+    claimToken: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get("respondentRuns", args.runId);
+    if (!run || run.status !== "retrying" || run.attempts !== args.claimToken) {
+      return null;
+    }
+    await ctx.db.patch("respondentRuns", run._id, {
+      status: "pending",
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.execution.dispatchRespondents, {
+      testId: run.testId,
+    });
+    return null;
+  },
+});
+
 export const failRespondent = internalMutation({
   args: {
     runId: v.id("respondentRuns"),
@@ -648,7 +670,7 @@ export const failRespondent = internalMutation({
       return null;
     }
     await ctx.db.patch("respondentRuns", run._id, {
-      status: "pending",
+      status: "retrying",
       leaseExpiresAt: undefined,
       errorClass: args.errorClass,
       errorMessage: args.errorMessage.slice(0, 500),
@@ -666,8 +688,8 @@ export const failRespondent = internalMutation({
     }
     await ctx.scheduler.runAfter(
       2 ** run.attempts * 2_000,
-      internal.execution.dispatchRespondents,
-      { testId: run.testId },
+      internal.execution.releaseRespondentRetry,
+      { runId: run._id, claimToken: run.attempts },
     );
     return null;
   },
@@ -712,7 +734,7 @@ export const reclaimStaleWork = internalMutation({
       .withIndex("by_status_and_leaseExpiresAt", (q) =>
         q.eq("status", "running").lt("leaseExpiresAt", now),
       )
-      .take(50);
+      .take(STALE_RESPONDENT_BATCH_SIZE);
     const affectedTests = new Set<Id<"tests">>();
     for (const run of staleRuns) {
       if (run.attempts >= MAX_WORK_ATTEMPTS) {
@@ -737,6 +759,9 @@ export const reclaimStaleWork = internalMutation({
       await ctx.scheduler.runAfter(0, internal.execution.dispatchRespondents, {
         testId,
       });
+    }
+    if (staleRuns.length === STALE_RESPONDENT_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.execution.reclaimStaleWork, {});
     }
     return {
       personaBatches: stalePersonaBatches.length,

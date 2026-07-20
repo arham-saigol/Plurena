@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
@@ -641,6 +641,58 @@ describe("worker fencing", () => {
     expect(state.response).toBeNull();
   });
 
+  it("keeps respondent retries out of dispatch until backoff expires", async () => {
+    const { t, testId } = await launchedTestAsAlice();
+    const batchId = await t.run(async (ctx) => {
+      const batch = await ctx.db.query("personaBatches").first();
+      if (!batch) throw new Error("Expected persona batch");
+      return batch._id;
+    });
+    const personaClaim = await t.mutation(
+      internal.execution.claimPersonaBatch,
+      { batchId },
+    );
+    if (typeof personaClaim !== "number") throw new Error("Expected claim");
+    await t.mutation(internal.execution.completePersonaBatch, {
+      batchId,
+      claimToken: personaClaim,
+      personas: personaFixtures(),
+    });
+    await t.mutation(internal.execution.dispatchRespondents, { testId });
+    const runId = await t.run(async (ctx) => {
+      const run = await ctx.db
+        .query("respondentRuns")
+        .withIndex("by_testId_and_status", (q) =>
+          q.eq("testId", testId).eq("status", "running"),
+        )
+        .first();
+      if (!run) throw new Error("Expected running respondent");
+      return run._id;
+    });
+
+    await t.mutation(internal.execution.failRespondent, {
+      runId,
+      claimToken: 1,
+      retryable: true,
+      errorClass: "rate_limit",
+      errorMessage: "Try later",
+    });
+    await t.mutation(internal.execution.dispatchRespondents, { testId });
+
+    const state = await t.run(async (ctx) => ({
+      retry: await ctx.db.get("respondentRuns", runId),
+      running: await ctx.db
+        .query("respondentRuns")
+        .withIndex("by_testId_and_status", (q) =>
+          q.eq("testId", testId).eq("status", "running"),
+        )
+        .take(6),
+    }));
+    expect(state.retry?.status).toBe("retrying");
+    expect(state.retry?.attempts).toBe(1);
+    expect(state.running).toHaveLength(5);
+  });
+
   it("ignores stale synthesis completions and failures", async () => {
     const { t, testId } = await launchedTestAsAlice();
     const batchId = await t.run(async (ctx) => {
@@ -731,6 +783,80 @@ describe("lease recovery", () => {
         (entry) => entry.type === "test_refund",
       ),
     ).toHaveLength(1);
+  });
+
+  it("schedules a continuation when the stale respondent batch is full", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t } = await launchedTestAsAlice();
+      const batchId = await t.run(async (ctx) => {
+        const batch = await ctx.db.query("personaBatches").first();
+        if (!batch) throw new Error("Expected persona batch");
+        return batch._id;
+      });
+      const personaClaim = await t.mutation(
+        internal.execution.claimPersonaBatch,
+        { batchId },
+      );
+      if (typeof personaClaim !== "number") throw new Error("Expected claim");
+      await t.mutation(internal.execution.completePersonaBatch, {
+        batchId,
+        claimToken: personaClaim,
+        personas: personaFixtures(),
+      });
+      await t.run(async (ctx) => {
+        const runs = await ctx.db.query("respondentRuns").take(20);
+        const first = runs[0];
+        if (!first || runs.length !== 20) {
+          throw new Error("Expected respondent work");
+        }
+        const now = Date.now();
+        for (const run of runs) {
+          await ctx.db.patch("respondentRuns", run._id, {
+            status: "running",
+            attempts: 1,
+            leaseExpiresAt: now - 1_000,
+          });
+        }
+        for (let index = 0; index < 31; index += 1) {
+          await ctx.db.insert("respondentRuns", {
+            testId: first.testId,
+            snapshotId: first.snapshotId,
+            ownerId: first.ownerId,
+            personaId: first.personaId,
+            status: "running",
+            attempts: 1,
+            leaseExpiresAt: now - 1_000,
+            createdAt: now + index + 1,
+            updatedAt: now,
+          });
+        }
+      });
+
+      await expect(
+        t.mutation(internal.execution.reclaimStaleWork, {}),
+      ).resolves.toMatchObject({ runs: 50 });
+
+      const state = await t.run(async (ctx) => ({
+        remaining: await ctx.db
+          .query("respondentRuns")
+          .withIndex("by_status_and_leaseExpiresAt", (q) =>
+            q.eq("status", "running"),
+          )
+          .take(2),
+        continuations: (
+          await ctx.db.system.query("_scheduled_functions").collect()
+        ).filter(
+          (job) =>
+            job.name === "execution:reclaimStaleWork" &&
+            job.state.kind === "pending",
+        ),
+      }));
+      expect(state.remaining).toHaveLength(1);
+      expect(state.continuations).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fails an exhausted respondent and advances progress", async () => {

@@ -11,6 +11,7 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
   respondentCountValidator,
+  respondentWorkStatusValidator,
   testStatusValidator,
   workStatusValidator,
 } from "./lib/validators";
@@ -189,7 +190,7 @@ export default defineSchema({
     snapshotId: v.id("testSnapshots"),
     ownerId: v.id("users"),
     personaId: v.id("personas"),
-    status: workStatusValidator,
+    status: respondentWorkStatusValidator,
     attempts: v.number(),
     leaseExpiresAt: v.optional(v.number()),
     startedAt: v.optional(v.number()),
