@@ -4,8 +4,7 @@
   "private": true,
   "description": "Audience-specific marketing validation with synthetic AI respondents.",
   "scripts": {
-    "dev": "convex dev --start 'next dev'",
-    "dev:web": "next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",

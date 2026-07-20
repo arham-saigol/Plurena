@@ -10,9 +10,9 @@ const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
-export const isClientConfigured = Boolean(convex && clerkKey);
+const isClientConfigured = Boolean(convex && clerkKey);
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   const content = isClientConfigured ? (
     <ClerkProvider publishableKey={clerkKey}>
       <ConvexProviderWithClerk client={convex!} useAuth={useAuth}>
