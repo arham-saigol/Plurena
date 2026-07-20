@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { Id } from "../_generated/dataModel";
-import { aggregateResponses, calculateFailureRefund } from "./aggregation";
+import {
+  aggregateResponses,
+  calculateFailureCreditRefund,
+} from "./aggregation";
+import {
+  BASE_CREDITS_PER_DOLLAR,
+  CREDIT_OPTIONS,
+  getConfiguredCreditOption,
+  getTestCreditCost,
+  RESPONDENT_COUNTS,
+} from "./credits";
 import {
   classifyProviderError,
   getModelRoutes,
@@ -9,20 +19,50 @@ import {
   ROUTED_GENERATION_DEADLINE_MS,
   ROUTED_GENERATION_LEASE_MS,
 } from "./models";
-import { getPriceCents, RESPONDENT_COUNTS } from "./pricing";
 import {
   finalNarrativeSchema,
   personaBatchSchema,
   respondentResultSchema,
 } from "./structuredSchemas";
 
-describe("server-owned pricing", () => {
-  it("matches every supported respondent tier", () => {
+describe("server-owned credit economics", () => {
+  it("charges exactly one credit for every supported respondent count", () => {
     expect(RESPONDENT_COUNTS).toEqual([20, 50, 75, 100, 150, 200, 250]);
-    expect(RESPONDENT_COUNTS.map(getPriceCents)).toEqual([
-      500, 1_000, 1_400, 1_800, 2_500, 3_300, 4_000,
+    expect(RESPONDENT_COUNTS.map(getTestCreditCost)).toEqual([
+      20, 50, 75, 100, 150, 200, 250,
     ]);
-    expect(() => getPriceCents(21)).toThrow("Unsupported respondent count");
+    expect(() => getTestCreditCost(0)).toThrow(
+      "Respondent count must be a positive integer",
+    );
+  });
+
+  it("defines fixed purchases with progressively larger bonuses", () => {
+    expect(
+      CREDIT_OPTIONS.map(({ priceCents, credits, bonusPercent }) => ({
+        priceCents,
+        credits,
+        bonusPercent,
+      })),
+    ).toEqual([
+      { priceCents: 1_000, credits: 50, bonusPercent: 0 },
+      { priceCents: 2_500, credits: 135, bonusPercent: 8 },
+      { priceCents: 5_000, credits: 275, bonusPercent: 10 },
+      { priceCents: 10_000, credits: 575, bonusPercent: 15 },
+      { priceCents: 20_000, credits: 1_200, bonusPercent: 20 },
+      { priceCents: 40_000, credits: 2_500, bonusPercent: 25 },
+    ]);
+    for (const option of CREDIT_OPTIONS) {
+      const baseCredits = (option.priceCents / 100) * BASE_CREDITS_PER_DOLLAR;
+      expect(option.credits).toBe(
+        baseCredits * (1 + option.bonusPercent / 100),
+      );
+    }
+    expect(() =>
+      getConfiguredCreditOption("credits_50", {
+        CREEM_PRODUCT_ID_10: "duplicate",
+        CREEM_PRODUCT_ID_25: "duplicate",
+      }),
+    ).toThrow("Creem product IDs must be unique");
   });
 });
 
@@ -62,7 +102,7 @@ describe("deterministic aggregation and refunds", () => {
     });
   });
 
-  it("handles ties and proportionally refunds failed responses", () => {
+  it("handles ties and refunds one credit per failed response", () => {
     const first = "option-a" as Id<"snapshotOptions">;
     const second = "option-b" as Id<"snapshotOptions">;
     const result = aggregateResponses(
@@ -77,8 +117,8 @@ describe("deterministic aggregation and refunds", () => {
     );
     expect(result.winningOptionId).toBeUndefined();
     expect(result.outcomeLabel).toBe("Tie");
-    expect(calculateFailureRefund(1_000, 40, 10)).toBe(200);
-    expect(calculateFailureRefund(500, 0, 20)).toBe(500);
+    expect(calculateFailureCreditRefund(50, 40, 10)).toBe(10);
+    expect(calculateFailureCreditRefund(20, 0, 20)).toBe(20);
   });
 });
 

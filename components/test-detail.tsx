@@ -34,7 +34,7 @@ import {
 import { Input, Select } from "@/components/ui/form-controls";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatMoney, formatPercent } from "@/lib/utils";
+import { cn, formatCredits, formatPercent } from "@/lib/utils";
 
 type TestDetails = {
   test: Doc<"tests">;
@@ -465,10 +465,10 @@ function Results({ details }: { details: TestDetails }) {
               </div>
             </div>
           </Card>
-          {report.refundCents > 0 && (
+          {report.refundedCredits > 0 && (
             <Card className="border-[var(--amber)]/25 bg-[var(--amber-soft)] p-5">
               <p className="text-sm font-medium">
-                {formatMoney(report.refundCents)} returned
+                {formatCredits(report.refundedCredits)} returned
               </p>
               <p className="text-muted-foreground mt-1 text-xs leading-5">
                 Automatically refunded for respondent runs that failed after
@@ -690,7 +690,7 @@ export function TestDetail({ testId }: { testId: Id<"tests"> }) {
             <Badge>Draft</Badge>
             <p className="text-muted-foreground mt-3 text-sm leading-6">
               This test has not been charged. Continue editing to review the
-              audience, respondent count, and launch price.
+              audience, respondent count, and credit cost.
             </p>
             <Button asChild className="mt-5 w-full" variant="outline">
               <Link href={`/app/tests/new?draft=${details.test._id}`}>

@@ -5,8 +5,8 @@ import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
+import { getTestCreditCost, RESPONDENT_COUNTS } from "./lib/credits";
 import { MODEL_CATALOG, MODEL_KEYS } from "./lib/models";
-import { getPriceCents, RESPONDENT_COUNTS } from "./lib/pricing";
 import {
   modelKeyValidator,
   optionInputValidator,
@@ -59,10 +59,7 @@ export const configuration = query({
   handler: async (ctx) => {
     await requireUser(ctx);
     return {
-      pricing: RESPONDENT_COUNTS.map((respondentCount) => ({
-        respondentCount,
-        priceCents: getPriceCents(respondentCount),
-      })),
+      respondentCounts: RESPONDENT_COUNTS,
       models: MODEL_KEYS.map((key) => ({
         key,
         label: MODEL_CATALOG[key].label,
@@ -230,8 +227,10 @@ export const launch = mutation({
     if (options.length < 2 || options.length > MAX_OPTIONS) {
       throw new Error("The draft must have between 2 and 8 options");
     }
-    const priceCents = getPriceCents(test.respondentCount);
-    if (user.balanceCents < priceCents) throw new Error("Insufficient balance");
+    const creditCost = getTestCreditCost(test.respondentCount);
+    if (user.creditBalance < creditCost) {
+      throw new Error("Insufficient credits");
+    }
 
     const chargeKey = `test:${test._id}:charge`;
     const existingCharge = await ctx.db
@@ -253,7 +252,7 @@ export const launch = mutation({
       respondentModel: test.respondentModel,
       personaModel: "glm_5_2",
       synthesisModel: "glm_5_2",
-      chargedPriceCents: priceCents,
+      chargedCredits: creditCost,
       createdAt: now,
     });
     for (const option of options) {
@@ -271,16 +270,16 @@ export const launch = mutation({
         sizeBytes: option.sizeBytes,
       });
     }
-    const resultingBalanceCents = user.balanceCents - priceCents;
+    const resultingCreditBalance = user.creditBalance - creditCost;
     await ctx.db.patch("users", user._id, {
-      balanceCents: resultingBalanceCents,
+      creditBalance: resultingCreditBalance,
       updatedAt: now,
     });
     await ctx.db.insert("ledgerEntries", {
       ownerId: user._id,
       type: "test_charge",
-      amountCents: -priceCents,
-      resultingBalanceCents,
+      amountCredits: -creditCost,
+      resultingCreditBalance,
       reason: `Launched ${test.name}`,
       externalKey: chargeKey,
       testId: test._id,
@@ -290,7 +289,7 @@ export const launch = mutation({
     await ctx.db.patch("tests", test._id, {
       status: "preparing_personas",
       snapshotId,
-      priceCents,
+      creditCost,
       launchedAt: now,
       updatedAt: now,
     });

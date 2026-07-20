@@ -8,9 +8,9 @@ Synthetic research is presented as decision support, not a substitute for real c
 
 - Public light-mode marketing site and responsive Notion-inspired application shell
 - Clerk sign-up, sign-in, session management, protected routes, and Convex identity integration
-- One-time $6 onboarding credit with an append-only, integer-cent ledger
+- One-time 25-credit onboarding bonus with an append-only integer-credit ledger
 - Draftable four-step test builder for reorderable text and private image options
-- Server-owned respondent tiers and pricing: 20/$5, 50/$10, 75/$14, 100/$18, 150/$25, 200/$33, and 250/$40
+- One-credit-per-respondent test costs across every supported panel size
 - Immutable test snapshots and atomic, idempotent launch charging
 - Convex-managed persona batches, bounded respondent execution, leases, retry recovery, live progress, and hierarchical synthesis
 - All ten models from `models.md`, with centralized vision-aware routing, primary/backup providers, timeouts, limited retries, and error classification
@@ -18,30 +18,30 @@ Synthetic research is presented as decision support, not a substitute for real c
 - Deterministic rankings, vote percentages, confidence distributions, ties, and result-strength labels
 - Persisted structured and readable reports, individual response search/filtering, and persona detail views
 - Private Convex file storage with ownership, content-type, and 8 MB server validation
-- Creem quantity checkout, signed webhooks, replay protection, idempotent credits, success/cancel views, and transaction history
+- Fixed Creem credit products, signed lifecycle webhooks, replay protection, idempotent grants and reversals, success/cancel views, and credit history
 - Light/dark theme persistence, skeleton/empty/error states, accessible labels and focus treatment, and responsive layouts
 
 ## Architecture
 
 The browser never receives provider, payment, or webhook credentials. Clerk authenticates the workspace and supplies a Convex JWT. Convex owns application data, storage, authorization, pricing, job state, scheduling, and financial transactions.
 
-Launching a draft performs one Convex transaction: authorize owner, validate options and server price, verify funds, create an immutable snapshot, debit the cached balance, append the unique ledger charge, and enqueue the first persona batch. Persona generation uses GLM-5.2 in batches of 20. Once the exact requested panel exists, respondent runs execute with concurrency five. Each run has a lease, a unique persona, bounded retries, and a one-response-per-run index.
+Launching a draft performs one Convex transaction: authorize owner, validate options and the server-owned one-credit-per-respondent cost, verify credits, create an immutable snapshot, debit the cached credit balance, append the unique ledger charge, and enqueue the first persona batch. Persona generation uses GLM-5.2 in batches of 20. Once the exact requested panel exists, respondent runs execute with concurrency five. Each run has a lease, a unique persona, bounded retries, and a one-response-per-run index.
 
 Completed responses are grouped in batches of 25 for GLM-5.2 synthesis. The final action receives bounded group summaries plus exact deterministic aggregates. The final mutation persists both structured fields and a readable report. A two-minute cron reclaims expired leases.
 
-Financial updates always mutate the cached balance and append a ledger record in the same transaction. Checkout credits use unique Creem checkout keys. Test charges use unique test keys. No model work begins before a successful charge.
+Credit updates always mutate the cached balance and append a ledger record in the same transaction. Purchases, refunds, disputes, and test charges use unique external keys. No model work begins before a successful charge.
 
 ### Failure and refund policy
 
 - If persona construction ultimately fails, no respondent work occurred and the complete charge is refunded once.
 - Individual respondent work retries up to three attempts for legitimate transient failures.
-- A completed or partially completed panel receives a proportional integer-cent refund for permanently failed respondents.
+- A completed or partially completed panel receives exactly one refunded credit for each permanently failed respondent.
 - If every respondent fails, the full test charge is refunded.
 - A failed narrative-generation call falls back to an honest deterministic report based on stored responses; it never invents a successful AI synthesis.
 
 ## Local setup
 
-Requirements: Node.js 24, a Convex account, a Clerk application, one Creem $5 one-time product, and at least one configured inference provider.
+Requirements: Node.js 24, a Convex account, a Clerk application, six Creem one-time products, and at least one configured inference provider.
 
 1. Install dependencies.
 
@@ -64,7 +64,12 @@ Requirements: Node.js 24, a Convex account, a Clerk application, one Creem $5 on
    npx convex env set OPENROUTER_API_KEY your_key
    npx convex env set CREEM_API_KEY your_key
    npx convex env set CREEM_WEBHOOK_SECRET your_secret
-   npx convex env set CREEM_PRODUCT_ID prod_your_five_dollar_product
+   npx convex env set CREEM_PRODUCT_ID_10 prod_your_10_dollar_credit_product
+   npx convex env set CREEM_PRODUCT_ID_25 prod_your_25_dollar_credit_product
+   npx convex env set CREEM_PRODUCT_ID_50 prod_your_50_dollar_credit_product
+   npx convex env set CREEM_PRODUCT_ID_100 prod_your_100_dollar_credit_product
+   npx convex env set CREEM_PRODUCT_ID_200 prod_your_200_dollar_credit_product
+   npx convex env set CREEM_PRODUCT_ID_400 prod_your_400_dollar_credit_product
    npx convex env set CREEM_API_BASE_URL https://test-api.creem.io
    npx convex env set APP_URL http://localhost:3000
    ```
@@ -85,13 +90,24 @@ The current development deployment is `arham-saigol/plurena` at `https://accurat
 
 ## Creem setup
 
-Create one one-time product priced at exactly $5 and set its ID as `CREEM_PRODUCT_ID`. Point the Creem webhook at:
+Create a separate one-time product for each server-owned option and configure its product ID as shown:
+
+| Price | Credits | Bonus | Environment variable   |
+| ----: | ------: | ----: | ---------------------- |
+|   $10 |      50 |    0% | `CREEM_PRODUCT_ID_10`  |
+|   $25 |     135 |    8% | `CREEM_PRODUCT_ID_25`  |
+|   $50 |     275 |   10% | `CREEM_PRODUCT_ID_50`  |
+|  $100 |     575 |   15% | `CREEM_PRODUCT_ID_100` |
+|  $200 |   1,200 |   20% | `CREEM_PRODUCT_ID_200` |
+|  $400 |   2,500 |   25% | `CREEM_PRODUCT_ID_400` |
+
+Point the Creem webhook at:
 
 ```text
 https://<your-convex-site-domain>/creem/webhook
 ```
 
-The site-domain value is printed by the Convex CLI and stored locally as `NEXT_PUBLIC_CONVEX_SITE_URL`. Subscribe to `checkout.completed` and copy the webhook signing secret into `CREEM_WEBHOOK_SECRET`. Use `https://test-api.creem.io` in development and `https://api.creem.io` in production. The browser return URL is `/app/billing/success?session=<request-id>`; `/app/billing/cancel` provides the canceled-checkout experience.
+The site-domain value is printed by the Convex CLI and stored locally as `NEXT_PUBLIC_CONVEX_SITE_URL`. Subscribe to `checkout.completed`, `refund.created`, and `dispute.created`, then copy the webhook signing secret into `CREEM_WEBHOOK_SECRET`. Use `https://test-api.creem.io` in development and `https://api.creem.io` in production. The browser return URL is `/app/billing/success?session=<request-id>`; `/app/billing/cancel?session=<request-id>` records a cancelled checkout. Creem does not emit failed or cancelled events for one-time checkout attempts, so creation failures and browser cancellations are recorded by the application.
 
 ## Vercel deployment
 
@@ -116,7 +132,7 @@ npm run build
 npm run check        # typecheck + lint + tests
 ```
 
-The test suite covers authoritative pricing, aggregation and refund math, model routing and fallback classification, structured-output validation, user isolation, onboarding ledger idempotency, atomic launch charging, Creem webhook replay protection, and duplicate respondent completion.
+The test suite covers authoritative credit options, one-credit-per-respondent charging, exact failed-respondent refunds, model routing and fallback classification, structured-output validation, user isolation, onboarding ledger idempotency, atomic launch charging, Creem grant/reversal replay protection, and duplicate respondent completion.
 
 ## External-service validation
 

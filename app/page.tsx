@@ -49,7 +49,7 @@ export default function LandingPage() {
               <Link href="/sign-in">Log in</Link>
             </Button>
             <Button asChild variant="blue">
-              <Link href="/sign-up">Start with $6 free</Link>
+              <Link href="/sign-up">Start with 25 free credits</Link>
             </Button>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function LandingPage() {
             </Button>
           </div>
           <p className="mt-4 text-xs text-black/45">
-            $6 welcome credit · No subscription · Directional evidence, not a
+            25 welcome credits · No subscription · Directional evidence, not a
             crystal ball
           </p>
         </div>
@@ -320,17 +320,17 @@ export default function LandingPage() {
           >
             <p className="text-sm font-semibold">Pay as you go</p>
             <div className="mt-5 flex items-baseline gap-1">
-              <span className="text-5xl font-semibold tracking-tight">$5</span>
-              <span className="text-black/45">increments</span>
+              <span className="text-5xl font-semibold tracking-tight">1</span>
+              <span className="text-black/45">credit per respondent</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-black/55">
-              No subscription. Top up your balance when you need it. Tests start
-              at $5 for 20 respondents.
+              No subscription. Purchase credits from $10 and use exactly one
+              credit for every respondent in a test.
             </p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
-                "$6 welcome credit",
-                "Server-verified balance",
+                "25 welcome credits",
+                "Server-verified credit balance",
                 "Only charged once per test",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">

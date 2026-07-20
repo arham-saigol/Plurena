@@ -13,6 +13,11 @@ export function formatMoney(cents: number) {
   }).format(cents / 100);
 }
 
+export function formatCredits(credits: number) {
+  const formatted = new Intl.NumberFormat("en-US").format(credits);
+  return `${formatted} ${Math.abs(credits) === 1 ? "credit" : "credits"}`;
+}
+
 export function formatPercent(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "percent",

@@ -7,7 +7,7 @@ import { CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/utils";
+import { formatCredits } from "@/lib/utils";
 
 export function CheckoutStatus() {
   const requestId = useSearchParams().get("session");
@@ -42,8 +42,33 @@ export function CheckoutStatus() {
     return (
       <StatusContent
         icon={<CheckCircle2 className="text-emerald-500" />}
-        title={`${formatMoney(checkout.expectedCreditCents)} added`}
-        description="Your payment is confirmed and the credit is ready to use."
+        title={`${formatCredits(checkout.credits)} added`}
+        description="Your payment is confirmed and the credits are ready to use."
+      />
+    );
+  }
+  if (checkout.status === "partially_refunded") {
+    return (
+      <StatusContent
+        icon={<CircleAlert className="text-[var(--amber)]" />}
+        title="Purchase partially refunded"
+        description="This purchase was partially refunded, so the corresponding credits were reversed."
+      />
+    );
+  }
+  if (checkout.status === "refunded" || checkout.status === "disputed") {
+    return (
+      <StatusContent
+        icon={<CircleAlert className="text-[var(--amber)]" />}
+        title={
+          checkout.status === "refunded"
+            ? "Payment refunded"
+            : "Payment disputed"
+        }
+        description={
+          checkout.errorMessage ??
+          "The credits from this purchase have been reversed."
+        }
       />
     );
   }
@@ -53,7 +78,7 @@ export function CheckoutStatus() {
       title="Payment was not credited"
       description={
         checkout.errorMessage ??
-        "The checkout could not be confirmed. No Plurena balance was added."
+        "The checkout could not be confirmed. No credits were added."
       }
     />
   );

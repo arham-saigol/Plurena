@@ -6,8 +6,8 @@ export default function BillingPage() {
     <>
       <PageHeader
         eyebrow="Workspace"
-        title="Balance & billing"
-        description="Add prepaid funds and review every balance movement."
+        title="Credits & billing"
+        description="Purchase credits and review every credit movement."
       />
       <BillingPanel />
     </>

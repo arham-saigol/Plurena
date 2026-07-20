@@ -54,31 +54,31 @@ async function fullRefund(
   reason: string,
 ) {
   const test = await ctx.db.get("tests", testId);
-  if (!test?.snapshotId || !test.priceCents) return 0;
+  if (!test?.snapshotId || !test.creditCost) return 0;
   const refundKey = `test:${testId}:refund`;
   const existing = await ctx.db
     .query("ledgerEntries")
     .withIndex("by_externalKey", (q) => q.eq("externalKey", refundKey))
     .unique();
-  if (existing) return existing.amountCents;
+  if (existing) return existing.amountCredits;
   const user = await ctx.db.get("users", test.ownerId);
   if (!user) return 0;
-  const resultingBalanceCents = user.balanceCents + test.priceCents;
+  const resultingCreditBalance = user.creditBalance + test.creditCost;
   await ctx.db.patch("users", user._id, {
-    balanceCents: resultingBalanceCents,
+    creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
   await ctx.db.insert("ledgerEntries", {
     ownerId: user._id,
     type: "test_refund",
-    amountCents: test.priceCents,
-    resultingBalanceCents,
+    amountCredits: test.creditCost,
+    resultingCreditBalance,
     reason,
     externalKey: refundKey,
     testId,
     createdAt: Date.now(),
   });
-  return test.priceCents;
+  return test.creditCost;
 }
 
 async function terminallyFailPersonaBatch(

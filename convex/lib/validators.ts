@@ -11,6 +11,15 @@ export const respondentCountValidator = v.union(
   v.literal(250),
 );
 
+export const creditOptionKeyValidator = v.union(
+  v.literal("credits_50"),
+  v.literal("credits_135"),
+  v.literal("credits_275"),
+  v.literal("credits_575"),
+  v.literal("credits_1200"),
+  v.literal("credits_2500"),
+);
+
 export const modelKeyValidator = v.union(
   ...MODEL_KEYS.map((key) => v.literal(key)),
 );
@@ -67,9 +76,11 @@ export const familiarityValidator = v.union(
 
 export const ledgerTypeValidator = v.union(
   v.literal("onboarding_bonus"),
-  v.literal("top_up"),
+  v.literal("credit_purchase"),
   v.literal("test_charge"),
   v.literal("test_refund"),
+  v.literal("payment_refund"),
+  v.literal("payment_dispute"),
   v.literal("adjustment"),
 );
 

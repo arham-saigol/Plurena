@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 
-const ONBOARDING_BONUS_CENTS = 600;
+const ONBOARDING_BONUS_CREDITS = 25;
 
 export const syncCurrentUser = mutation({
   args: {
@@ -37,8 +37,7 @@ export const syncCurrentUser = mutation({
       email: args.email ?? identity.email,
       name: args.name ?? identity.name,
       imageUrl: args.imageUrl,
-      balanceCents: ONBOARDING_BONUS_CENTS,
-      onboardingGranted: true,
+      creditBalance: ONBOARDING_BONUS_CREDITS,
       createdAt: now,
       updatedAt: now,
     });
@@ -51,9 +50,9 @@ export const syncCurrentUser = mutation({
     await ctx.db.insert("ledgerEntries", {
       ownerId: userId,
       type: "onboarding_bonus",
-      amountCents: ONBOARDING_BONUS_CENTS,
-      resultingBalanceCents: ONBOARDING_BONUS_CENTS,
-      reason: "Welcome credit",
+      amountCredits: ONBOARDING_BONUS_CREDITS,
+      resultingCreditBalance: ONBOARDING_BONUS_CREDITS,
+      reason: "Welcome bonus credits",
       externalKey: `onboarding:${identity.tokenIdentifier}`,
       createdAt: now,
     });
@@ -70,7 +69,7 @@ export const current = query({
       email: user.email,
       name: user.name,
       imageUrl: user.imageUrl,
-      balanceCents: user.balanceCents,
+      creditBalance: user.creditBalance,
       createdAt: user.createdAt,
     };
   },

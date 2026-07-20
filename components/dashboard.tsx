@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { CircleDollarSign, FlaskConical, Plus, Sparkles } from "lucide-react";
+import { Coins, FlaskConical, Plus, Sparkles } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { TestList } from "@/components/test-list";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatMoney } from "@/lib/utils";
+import { formatCredits } from "@/lib/utils";
 
 export function Dashboard({ all = false }: { all?: boolean }) {
   const {
@@ -65,9 +65,9 @@ export function Dashboard({ all = false }: { all?: boolean }) {
         <div className="grid gap-3 sm:grid-cols-3">
           {[
             {
-              label: "Available balance",
-              value: formatMoney(user.balanceCents),
-              icon: CircleDollarSign,
+              label: "Available credits",
+              value: formatCredits(user.creditBalance),
+              icon: Coins,
               href: "/app/billing",
             },
             {
