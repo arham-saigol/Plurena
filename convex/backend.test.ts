@@ -274,7 +274,7 @@ describe("authenticated financial invariants", () => {
     expect(afterLastDelete.hasSharedBlob).toBe(false);
   });
 
-  it("reclaims superseded, orphaned, and unfinalized image uploads", async () => {
+  it("reclaims released and unfinalized uploads without expiring finalized uploads", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
@@ -361,9 +361,19 @@ describe("authenticated financial invariants", () => {
     expect(result.hasOldBBlob).toBe(false);
     expect(result.replacementA).not.toBeNull();
     expect(result.hasReplacementABlob).toBe(true);
-    expect(result.orphan).toBeNull();
-    expect(result.hasOrphanBlob).toBe(false);
+    expect(result.orphan).not.toBeNull();
+    expect(result.hasOrphanBlob).toBe(true);
     expect(result.hasUnfinalizedBlob).toBe(false);
+
+    await alice.mutation(api.uploads.removeUpload, {
+      assetId: uploads.orphan.assetId,
+    });
+    const released = await t.run(async (ctx) => ({
+      asset: await ctx.db.get("uploadedAssets", uploads.orphan.assetId),
+      hasBlob: (await ctx.storage.get(uploads.orphan.storageId)) !== null,
+    }));
+    expect(released.asset).toBeNull();
+    expect(released.hasBlob).toBe(false);
   });
 
   it("resumes upload cleanup after its durable sweep watermark", async () => {

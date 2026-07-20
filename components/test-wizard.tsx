@@ -136,6 +136,7 @@ function TestWizardForm({
   const launchMutation = useMutation(api.tests.launch);
   const generateUploadUrl = useMutation(api.uploads.generateUploadUrl);
   const finalizeUpload = useMutation(api.uploads.finalizeUpload);
+  const removeUpload = useMutation(api.uploads.removeUpload);
   const [step, setStep] = useState(0);
   const [testId, setTestId] = useState<Id<"tests"> | undefined>(draftId);
   const [name, setName] = useState(draft?.test.name ?? "");
@@ -165,9 +166,23 @@ function TestWizardForm({
   );
   const [saving, setSaving] = useState(false);
   const previewUrls = useRef(new Set<string>());
+  const assetIds = useRef(
+    new Set(
+      options.flatMap((option) => (option.assetId ? [option.assetId] : [])),
+    ),
+  );
+  const removeUploadRef = useRef(removeUpload);
+
+  useEffect(() => {
+    removeUploadRef.current = removeUpload;
+  }, [removeUpload]);
 
   useEffect(
     () => () => {
+      for (const assetId of assetIds.current) {
+        void removeUploadRef.current({ assetId }).catch(() => undefined);
+      }
+      assetIds.current.clear();
       for (const url of previewUrls.current) URL.revokeObjectURL(url);
       previewUrls.current.clear();
     },
@@ -177,6 +192,12 @@ function TestWizardForm({
   function revokePreviewUrl(previewUrl?: string) {
     if (!previewUrl || !previewUrls.current.delete(previewUrl)) return;
     URL.revokeObjectURL(previewUrl);
+  }
+
+  function releaseUpload(assetId?: Id<"uploadedAssets">) {
+    if (!assetId) return;
+    assetIds.current.delete(assetId);
+    void removeUpload({ assetId }).catch(() => undefined);
   }
 
   const priceCents = useMemo(
@@ -210,7 +231,10 @@ function TestWizardForm({
         configuration.models.find((model) => model.vision)?.key ?? "minimax_m3",
       );
     }
-    for (const option of options) revokePreviewUrl(option.previewUrl);
+    for (const option of options) {
+      revokePreviewUrl(option.previewUrl);
+      releaseUpload(option.assetId);
+    }
     setOptionType(nextType);
     setOptions([newOption(0), newOption(1)]);
   }
@@ -266,8 +290,10 @@ function TestWizardForm({
         filename: file.name,
       })) as Id<"uploadedAssets">;
       const previewUrl = URL.createObjectURL(file);
+      assetIds.current.add(assetId);
       previewUrls.current.add(previewUrl);
       revokePreviewUrl(option.previewUrl);
+      releaseUpload(option.assetId);
       updateOption(option.key, {
         uploading: false,
         assetId,
@@ -518,6 +544,7 @@ function TestWizardForm({
                       disabled={options.length <= 2}
                       onClick={() => {
                         revokePreviewUrl(option.previewUrl);
+                        releaseUpload(option.assetId);
                         setOptions((current) =>
                           current.filter((item) => item.key !== option.key),
                         );

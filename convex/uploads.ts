@@ -128,16 +128,7 @@ export const reclaimAbandonedUploads = internalMutation({
         .query("uploadedAssets")
         .withIndex("by_storageId", (q) => q.eq("storageId", storedFile._id))
         .first();
-      if (asset) {
-        const inUse = await ctx.db
-          .query("testOptions")
-          .withIndex("by_ownerId_and_storageId", (q) =>
-            q.eq("ownerId", asset.ownerId).eq("storageId", asset.storageId),
-          )
-          .first();
-        if (inUse) continue;
-        await ctx.db.delete("uploadedAssets", asset._id);
-      }
+      if (asset) continue;
       await ctx.storage.delete(storedFile._id);
     }
 
