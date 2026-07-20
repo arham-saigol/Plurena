@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/arham-saigol/Plurena#readme",
   "engines": {
-    "node": ">=20"
+    "node": ">=24 <25"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.98",

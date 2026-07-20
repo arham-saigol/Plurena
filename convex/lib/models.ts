@@ -224,6 +224,8 @@ export type ProviderErrorClass =
   | "schema"
   | "unknown";
 
+export class ModelOutputValidationError extends Error {}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -241,6 +243,9 @@ export function classifyProviderError(error: unknown): {
   const status = readStatus(error);
   const message = error instanceof Error ? error.message.toLowerCase() : "";
 
+  if (error instanceof ModelOutputValidationError) {
+    return { classification: "schema", retryable: true };
+  }
   if (error instanceof DOMException && error.name === "TimeoutError") {
     return { classification: "timeout", retryable: true };
   }

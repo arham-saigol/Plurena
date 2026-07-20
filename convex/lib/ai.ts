@@ -94,6 +94,7 @@ export async function generateStructured<T>({
   prompt,
   messages,
   maxOutputTokens = 4_000,
+  deadlineAt = Date.now() + ROUTED_GENERATION_DEADLINE_MS,
 }: {
   requestedModel: ModelKey;
   requiresVision: boolean;
@@ -102,17 +103,20 @@ export async function generateStructured<T>({
   prompt?: string;
   messages?: Array<ModelMessage>;
   maxOutputTokens?: number;
+  deadlineAt?: number;
 }) {
   const attempts: Array<ProviderAttempt> = [];
   const routes = getModelRoutes(requestedModel, requiresVision);
-  const deadlineAt = Date.now() + ROUTED_GENERATION_DEADLINE_MS;
   let lastAttemptedFailure:
+    { classification: ProviderErrorClass; retryable: boolean } | undefined;
+  let lastRetryableFailure:
     { classification: ProviderErrorClass; retryable: boolean } | undefined;
 
   for (const route of routes) {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs <= 0) {
       lastAttemptedFailure = { classification: "timeout", retryable: true };
+      lastRetryableFailure = lastAttemptedFailure;
       break;
     }
     const startedAt = Date.now();
@@ -168,6 +172,9 @@ export async function generateStructured<T>({
       }
       const classified = classifyProviderError(error);
       lastAttemptedFailure = classified;
+      if (classified.retryable) {
+        lastRetryableFailure = { ...classified, retryable: true };
+      }
       attempts.push({
         modelKey: route.modelKey,
         provider: route.provider,
@@ -189,10 +196,11 @@ export async function generateStructured<T>({
     }
   }
 
-  const classified = lastAttemptedFailure ?? {
-    classification: "configuration" as const,
-    retryable: false,
-  };
+  const classified = lastRetryableFailure ??
+    lastAttemptedFailure ?? {
+      classification: "configuration" as const,
+      retryable: false,
+    };
   throw new RoutedGenerationError(
     "All eligible model routes were temporarily unavailable",
     attempts,

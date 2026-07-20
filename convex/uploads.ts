@@ -7,6 +7,7 @@ const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ABANDONED_UPLOAD_GRACE_MS = 60 * 60 * 1_000;
 const CLEANUP_BATCH_SIZE = 50;
+const ABANDONED_UPLOAD_SWEEP = "abandoned_uploads";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -68,20 +69,61 @@ export const removeUpload = mutation({
   },
 });
 
+export const startReclaimAbandonedUploads = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const sweep = await ctx.db
+      .query("maintenanceSweeps")
+      .withIndex("by_name", (q) => q.eq("name", ABANDONED_UPLOAD_SWEEP))
+      .unique();
+    const afterCreationTime = sweep?.afterCreationTime ?? 0;
+    const cutoff = sweep?.cutoff ?? Date.now() - ABANDONED_UPLOAD_GRACE_MS;
+    await ctx.scheduler.runAfter(
+      0,
+      internal.uploads.reclaimAbandonedUploads,
+      sweep?.cursor
+        ? { afterCreationTime, cursor: sweep.cursor, cutoff }
+        : { afterCreationTime, cutoff },
+    );
+    return null;
+  },
+});
+
 export const reclaimAbandonedUploads = internalMutation({
   args: {
+    afterCreationTime: v.optional(v.number()),
     cursor: v.optional(v.string()),
     cutoff: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const cutoff = args.cutoff ?? Date.now() - ABANDONED_UPLOAD_GRACE_MS;
+    const sweep = await ctx.db
+      .query("maintenanceSweeps")
+      .withIndex("by_name", (q) => q.eq("name", ABANDONED_UPLOAD_SWEEP))
+      .unique();
+    const afterCreationTime = args.afterCreationTime ?? 0;
+    if (
+      sweep &&
+      (sweep.afterCreationTime !== afterCreationTime ||
+        sweep.cursor !== args.cursor ||
+        (sweep.cursor !== undefined && sweep.cutoff !== cutoff))
+    ) {
+      return null;
+    }
     const page = await ctx.db.system
       .query("_storage")
+      .withIndex("by_creation_time", (q) =>
+        q.gte("_creationTime", afterCreationTime),
+      )
       .order("asc")
       .paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_BATCH_SIZE });
 
+    let reachedCutoff = false;
     for (const storedFile of page.page) {
-      if (storedFile._creationTime >= cutoff) return null;
+      if (storedFile._creationTime >= cutoff) {
+        reachedCutoff = true;
+        break;
+      }
       const asset = await ctx.db
         .query("uploadedAssets")
         .withIndex("by_storageId", (q) => q.eq("storageId", storedFile._id))
@@ -99,11 +141,35 @@ export const reclaimAbandonedUploads = internalMutation({
       await ctx.storage.delete(storedFile._id);
     }
 
-    if (!page.isDone) {
+    const sweepPatch =
+      reachedCutoff || page.isDone
+        ? {
+            afterCreationTime: cutoff,
+            cursor: undefined,
+            cutoff: undefined,
+            updatedAt: Date.now(),
+          }
+        : {
+            afterCreationTime,
+            cursor: page.continueCursor,
+            cutoff,
+            updatedAt: Date.now(),
+          };
+    if (sweep) {
+      await ctx.db.patch("maintenanceSweeps", sweep._id, sweepPatch);
+    } else {
+      await ctx.db.insert("maintenanceSweeps", {
+        name: ABANDONED_UPLOAD_SWEEP,
+        ...sweepPatch,
+      });
+    }
+
+    if (!reachedCutoff && !page.isDone) {
       await ctx.scheduler.runAfter(
         0,
         internal.uploads.reclaimAbandonedUploads,
         {
+          afterCreationTime,
           cursor: page.continueCursor,
           cutoff,
         },

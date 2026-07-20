@@ -79,6 +79,14 @@ export default defineSchema({
     .index("by_ownerId_and_createdAt", ["ownerId", "createdAt"])
     .index("by_storageId", ["storageId"]),
 
+  maintenanceSweeps: defineTable({
+    name: v.string(),
+    afterCreationTime: v.number(),
+    cursor: v.optional(v.string()),
+    cutoff: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_name", ["name"]),
+
   testOptions: defineTable({
     testId: v.id("tests"),
     ownerId: v.id("users"),

@@ -9,7 +9,10 @@ import {
   RoutedGenerationError,
   type ProviderAttempt,
 } from "./lib/ai";
-import { classifyProviderError } from "./lib/models";
+import {
+  classifyProviderError,
+  ModelOutputValidationError,
+} from "./lib/models";
 import {
   personaBatchSchema,
   respondentResultSchema,
@@ -92,7 +95,9 @@ export const generatePersonaBatch = internalAction({
       });
       attempts = result.attempts;
       if (result.output.personas.length !== payload.batch.requestedCount) {
-        throw new Error("The model returned the wrong persona count");
+        throw new ModelOutputValidationError(
+          "The model returned the wrong persona count",
+        );
       }
       const personas = await Promise.all(
         result.output.personas.map(async (persona) => ({
@@ -104,7 +109,9 @@ export const generatePersonaBatch = internalAction({
         new Set(personas.map((persona) => persona.uniquenessFingerprint))
           .size !== personas.length
       ) {
-        throw new Error("The model returned duplicate personas");
+        throw new ModelOutputValidationError(
+          "The model returned duplicate personas",
+        );
       }
       await recordAttempts(ctx, {
         testId: payload.batch.testId,
@@ -133,7 +140,8 @@ export const generatePersonaBatch = internalAction({
         batchId: payload.batch._id,
         retryable: routed
           ? routed.retryable
-          : classified.classification === "schema",
+          : error instanceof ModelOutputValidationError ||
+            classified.classification === "schema",
         errorMessage:
           error instanceof Error ? error.message : "Persona generation failed",
       });
@@ -209,7 +217,9 @@ export const runRespondent = internalAction({
         (option) => option.position === result.output.selectedOptionPosition,
       );
       if (!selectedOption)
-        throw new Error("Model selected an invalid option position");
+        throw new ModelOutputValidationError(
+          "Model selected an invalid option position",
+        );
       await recordAttempts(ctx, {
         testId: payload.run.testId,
         ownerId: payload.run.ownerId,

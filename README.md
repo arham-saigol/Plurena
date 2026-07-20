@@ -41,7 +41,7 @@ Financial updates always mutate the cached balance and append a ledger record in
 
 ## Local setup
 
-Requirements: Node.js 20 or newer, a Convex account, a Clerk application, one Creem $5 one-time product, and at least one configured inference provider.
+Requirements: Node.js 24, a Convex account, a Clerk application, one Creem $5 one-time product, and at least one configured inference provider.
 
 1. Install dependencies.
 
@@ -71,10 +71,13 @@ Requirements: Node.js 20 or newer, a Convex account, a Clerk application, one Cr
 
    One model provider may be omitted for local work. Routes without credentials are skipped; production should configure both so documented provider fallback is available.
 
-5. Push functions and run both development processes:
+5. Run the Convex watcher and Next.js in separate terminals:
 
    ```bash
-   npx convex dev --once
+   npx convex dev
+   ```
+
+   ```bash
    npm run dev
    ```
 
@@ -103,8 +106,8 @@ Never put AI, Creem, or webhook secrets in Vercel variables prefixed with `NEXT_
 ## Commands
 
 ```bash
-npm run dev          # Convex and Next.js together
-npm run dev:web      # Next.js only
+npx convex dev       # Convex backend watcher
+npm run dev          # Next.js frontend
 npm run typecheck
 npm run lint
 npm run format:check

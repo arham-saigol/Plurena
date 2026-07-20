@@ -6,7 +6,7 @@ const crons = cronJobs();
 crons.interval(
   "reclaim abandoned uploads",
   { hours: 1 },
-  internal.uploads.reclaimAbandonedUploads,
+  internal.uploads.startReclaimAbandonedUploads,
   {},
 );
 

@@ -76,6 +76,34 @@ describe("routed generation failures", () => {
     });
   });
 
+  it("preserves transient retryability across later authentication failures", async () => {
+    mocks.generateText
+      .mockRejectedValueOnce({ status: 429 })
+      .mockRejectedValue({ status: 401 });
+
+    const error = await generateStructured(request).catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(RoutedGenerationError);
+    expect(error).toMatchObject({
+      classification: "rate_limit",
+      retryable: true,
+    });
+  });
+
+  it("fails as retryable timeout before routing when the deadline has expired", async () => {
+    const error = await generateStructured({
+      ...request,
+      deadlineAt: Date.now() - 1,
+    }).catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(RoutedGenerationError);
+    expect(error).toMatchObject({
+      classification: "timeout",
+      retryable: true,
+    });
+    expect(mocks.generateText).not.toHaveBeenCalled();
+  });
+
   it("still fails promptly for request-wide invalid inputs", async () => {
     mocks.generateText.mockRejectedValue({ status: 400 });
 

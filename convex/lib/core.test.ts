@@ -4,6 +4,7 @@ import { aggregateResponses, calculateFailureRefund } from "./aggregation";
 import {
   classifyProviderError,
   getModelRoutes,
+  ModelOutputValidationError,
   MODEL_KEYS,
   ROUTED_GENERATION_DEADLINE_MS,
   ROUTED_GENERATION_LEASE_MS,
@@ -127,6 +128,11 @@ describe("model routing policy", () => {
     expect(
       classifyProviderError(new Error("schema validation failed")),
     ).toEqual({ classification: "schema", retryable: false });
+    expect(
+      classifyProviderError(
+        new ModelOutputValidationError("Invalid option position"),
+      ),
+    ).toEqual({ classification: "schema", retryable: true });
   });
 });
 

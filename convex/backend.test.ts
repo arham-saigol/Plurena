@@ -122,6 +122,59 @@ describe("authenticated financial invariants", () => {
     expect(details.progress?.totalRespondents).toBe(50);
   });
 
+  it("paginates every test beyond the first fifty", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(aliceIdentity);
+    await alice.mutation(api.users.syncCurrentUser, {});
+    await t.run(async (ctx) => {
+      const user = await ctx.db.query("users").first();
+      if (!user) throw new Error("Expected Alice's user record");
+      for (let index = 0; index < 51; index += 1) {
+        const now = Date.now() + index;
+        const testId = await ctx.db.insert("tests", {
+          ownerId: user._id,
+          name: `Test ${index + 1}`,
+          question: "Which option performs better?",
+          optionType: "text",
+          audience: "Test audience",
+          respondentCount: 20,
+          respondentModel: "glm_5_2",
+          status: "completed",
+          createdAt: now,
+          updatedAt: now,
+          completedAt: now,
+        });
+        await ctx.db.insert("testProgress", {
+          testId,
+          ownerId: user._id,
+          status: "completed",
+          phaseLabel: "Report ready",
+          totalRespondents: 20,
+          personaCount: 20,
+          completedRespondents: 20,
+          failedRespondents: 0,
+          runningRespondents: 0,
+          updatedAt: now,
+        });
+      }
+    });
+
+    const firstPage = await alice.query(api.tests.dashboard, {
+      paginationOpts: { cursor: null, numItems: 50 },
+    });
+    const secondPage = await alice.query(api.tests.dashboard, {
+      paginationOpts: {
+        cursor: firstPage.continueCursor,
+        numItems: 50,
+      },
+    });
+
+    expect(firstPage.page).toHaveLength(50);
+    expect(firstPage.isDone).toBe(false);
+    expect(secondPage.page).toHaveLength(1);
+    expect(secondPage.isDone).toBe(true);
+  });
+
   it("deletes draft image assets only after their last reference", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
@@ -288,6 +341,47 @@ describe("authenticated financial invariants", () => {
     expect(result.orphan).toBeNull();
     expect(result.hasOrphanBlob).toBe(false);
     expect(result.hasUnfinalizedBlob).toBe(false);
+  });
+
+  it("resumes upload cleanup after its durable sweep watermark", async () => {
+    const t = convexTest(schema, modules);
+    const { firstStorageId, firstCutoff } = await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(
+        new Blob(["first"], { type: "image/png" }),
+      );
+      const metadata = await ctx.db.system.get("_storage", storageId);
+      if (!metadata) throw new Error("Expected first upload metadata");
+      return {
+        firstStorageId: storageId,
+        firstCutoff: metadata._creationTime + 0.1,
+      };
+    });
+    await t.mutation(internal.uploads.reclaimAbandonedUploads, {
+      cutoff: firstCutoff,
+    });
+    const afterCreationTime = await t.run(async (ctx) => {
+      const sweep = await ctx.db
+        .query("maintenanceSweeps")
+        .withIndex("by_name", (q) => q.eq("name", "abandoned_uploads"))
+        .unique();
+      if (!sweep) throw new Error("Expected upload sweep watermark");
+      return sweep.afterCreationTime;
+    });
+    const secondStorageId = await t.run((ctx) =>
+      ctx.storage.store(new Blob(["second"], { type: "image/png" })),
+    );
+
+    await t.mutation(internal.uploads.reclaimAbandonedUploads, {
+      afterCreationTime,
+      cutoff: Date.now() + 60_000,
+    });
+
+    const result = await t.run(async (ctx) => ({
+      hasFirst: (await ctx.storage.get(firstStorageId)) !== null,
+      hasSecond: (await ctx.storage.get(secondStorageId)) !== null,
+    }));
+    expect(result.hasFirst).toBe(false);
+    expect(result.hasSecond).toBe(false);
   });
 
   it("credits a verified checkout exactly once across duplicate webhooks", async () => {

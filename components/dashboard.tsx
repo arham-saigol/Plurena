@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { CircleDollarSign, FlaskConical, Plus, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { TestList } from "@/components/test-list";
@@ -12,10 +13,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/utils";
 
 export function Dashboard({ all = false }: { all?: boolean }) {
-  const tests = useQuery(api.tests.dashboard);
+  const {
+    results: tests,
+    status,
+    loadMore,
+  } = usePaginatedQuery(api.tests.dashboard, {}, { initialNumItems: 50 });
   const user = useQuery(api.users.current);
 
-  if (!tests || !user) {
+  useEffect(() => {
+    if (!all && status === "CanLoadMore") loadMore(50);
+  }, [all, loadMore, status]);
+
+  if (
+    !user ||
+    status === "LoadingFirstPage" ||
+    (!all && status !== "Exhausted")
+  ) {
     return (
       <div className="space-y-5">
         <Skeleton className="h-10 w-60" />
@@ -111,6 +124,17 @@ export function Dashboard({ all = false }: { all?: boolean }) {
           )}
         </div>
         <TestList tests={visible} />
+        {all && status !== "Exhausted" && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              disabled={status === "LoadingMore"}
+              onClick={() => loadMore(50)}
+            >
+              {status === "LoadingMore" ? "Loading…" : "Load more"}
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );

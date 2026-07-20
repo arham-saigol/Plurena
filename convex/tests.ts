@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -348,16 +349,16 @@ export const removeDraft = mutation({
 });
 
 export const dashboard = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const tests = await ctx.db
+    const result = await ctx.db
       .query("tests")
       .withIndex("by_ownerId_and_updatedAt", (q) => q.eq("ownerId", user._id))
       .order("desc")
-      .take(50);
-    return await Promise.all(
-      tests.map(async (test) => {
+      .paginate(args.paginationOpts);
+    const page = await Promise.all(
+      result.page.map(async (test) => {
         const progress = await ctx.db
           .query("testProgress")
           .withIndex("by_testId", (q) => q.eq("testId", test._id))
@@ -365,6 +366,7 @@ export const dashboard = query({
         return { ...test, progress };
       }),
     );
+    return { ...result, page };
   },
 });
 
