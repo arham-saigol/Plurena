@@ -1,9 +1,10 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
+import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { MODEL_CATALOG, MODEL_KEYS } from "./lib/models";
 import { getPriceCents, RESPONDENT_COUNTS } from "./lib/pricing";
 import {
@@ -153,6 +154,7 @@ export const saveDraft = mutation({
         respondentCount: args.respondentCount,
         respondentModel: args.respondentModel,
         status: "draft",
+        dashboardBucket: "ignored",
         createdAt: now,
         updatedAt: now,
       });
@@ -279,6 +281,7 @@ export const launch = mutation({
       testId: test._id,
       createdAt: now,
     });
+    await syncDashboardStatsForTest(ctx, test, "preparing_personas");
     await ctx.db.patch("tests", test._id, {
       status: "preparing_personas",
       snapshotId,
@@ -374,29 +377,13 @@ export const dashboardSummary = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
-    const countStatus = async (status: Doc<"tests">["status"]) => {
-      let count = 0;
-      for await (const test of ctx.db
-        .query("tests")
-        .withIndex("by_ownerId_and_status_and_updatedAt", (q) =>
-          q.eq("ownerId", user._id).eq("status", status),
-        )) {
-        void test;
-        count += 1;
-      }
-      return count;
-    };
-    const [preparing, running, synthesizing, completed, partiallyFailed] =
-      await Promise.all([
-        countStatus("preparing_personas"),
-        countStatus("running_respondents"),
-        countStatus("synthesizing"),
-        countStatus("completed"),
-        countStatus("partially_failed"),
-      ]);
+    const stats = await ctx.db
+      .query("dashboardStats")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+      .unique();
     return {
-      active: preparing + running + synthesizing,
-      completed: completed + partiallyFailed,
+      active: stats?.active ?? 0,
+      completed: stats?.completed ?? 0,
     };
   },
 });

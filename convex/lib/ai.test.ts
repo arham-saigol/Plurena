@@ -21,6 +21,13 @@ vi.mock("@ai-sdk/openai-compatible", () => ({
 }));
 vi.mock("ai", () => ({
   generateText: mocks.generateText,
+  NoObjectGeneratedError: {
+    isInstance: (error: unknown) =>
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      error.name === "AI_NoObjectGeneratedError",
+  },
   Output: { object: vi.fn(() => ({})) },
 }));
 
@@ -61,6 +68,26 @@ describe("routed generation failures", () => {
       { provider: "opencode_go", errorClass: "authentication" },
       { provider: "openrouter", errorClass: undefined },
     ]);
+  });
+
+  it("tries another route when model output does not match the schema", async () => {
+    mocks.generateText
+      .mockRejectedValueOnce({
+        name: "AI_NoObjectGeneratedError",
+        message: "response did not match schema",
+      })
+      .mockResolvedValueOnce({ output: { answer: "fallback" } });
+
+    const result = await generateStructured(request);
+
+    expect(result).toMatchObject({
+      output: { answer: "fallback" },
+      provider: "openrouter",
+    });
+    expect(result.attempts[0]).toMatchObject({
+      status: "failed",
+      errorClass: "schema",
+    });
   });
 
   it("preserves transient retryability when unconfigured routes are skipped", async () => {

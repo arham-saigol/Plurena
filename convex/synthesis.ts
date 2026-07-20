@@ -7,6 +7,7 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { aggregateResponses, calculateFailureRefund } from "./lib/aggregation";
+import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { ROUTED_GENERATION_LEASE_MS } from "./lib/models";
 import { modelKeyValidator, providerValidator } from "./lib/validators";
 
@@ -205,6 +206,7 @@ export const start = internalMutation({
     if (responses.length === 0) {
       const refundCents = await applyRefund(ctx, test, test.priceCents ?? 0);
       const now = Date.now();
+      await syncDashboardStatsForTest(ctx, test, "failed");
       await ctx.db.patch("tests", test._id, {
         status: "failed",
         completedAt: now,
@@ -530,6 +532,7 @@ export const finalize = internalMutation({
       leaseExpiresAt: undefined,
       updatedAt: now,
     });
+    await syncDashboardStatsForTest(ctx, test, finalStatus);
     await ctx.db.patch("tests", test._id, {
       status: finalStatus,
       completedAt: now,

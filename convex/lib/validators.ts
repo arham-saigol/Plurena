@@ -30,6 +30,12 @@ export const testStatusValidator = v.union(
   v.literal("failed"),
 );
 
+export const dashboardBucketValidator = v.union(
+  v.literal("ignored"),
+  v.literal("active"),
+  v.literal("completed"),
+);
+
 export const workStatusValidator = v.union(
   v.literal("pending"),
   v.literal("running"),

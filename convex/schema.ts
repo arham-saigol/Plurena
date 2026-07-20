@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   confidenceValidator,
+  dashboardBucketValidator,
   errorClassValidator,
   familiarityValidator,
   ledgerTypeValidator,
@@ -39,19 +40,21 @@ export default defineSchema({
     respondentCount: respondentCountValidator,
     respondentModel: modelKeyValidator,
     status: testStatusValidator,
+    dashboardBucket: dashboardBucketValidator,
     snapshotId: v.optional(v.id("testSnapshots")),
     priceCents: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     launchedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
-  })
-    .index("by_ownerId_and_updatedAt", ["ownerId", "updatedAt"])
-    .index("by_ownerId_and_status_and_updatedAt", [
-      "ownerId",
-      "status",
-      "updatedAt",
-    ]),
+  }).index("by_ownerId_and_updatedAt", ["ownerId", "updatedAt"]),
+
+  dashboardStats: defineTable({
+    ownerId: v.id("users"),
+    active: v.number(),
+    completed: v.number(),
+    updatedAt: v.number(),
+  }).index("by_ownerId", ["ownerId"]),
 
   testProgress: defineTable({
     testId: v.id("tests"),

@@ -14,6 +14,7 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
 } from "./lib/validators";
+import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import {
   ROUTED_GENERATION_LEASE_MS,
   type ProviderErrorClass,
@@ -91,11 +92,15 @@ async function terminallyFailPersonaBatch(
     errorMessage: errorMessage.slice(0, 500),
     updatedAt: now,
   });
-  await ctx.db.patch("tests", batch.testId, {
-    status: "failed",
-    completedAt: now,
-    updatedAt: now,
-  });
+  const test = await ctx.db.get("tests", batch.testId);
+  if (test) {
+    await syncDashboardStatsForTest(ctx, test, "failed");
+    await ctx.db.patch("tests", test._id, {
+      status: "failed",
+      completedAt: now,
+      updatedAt: now,
+    });
+  }
   const progress = await ctx.db
     .query("testProgress")
     .withIndex("by_testId", (q) => q.eq("testId", batch.testId))
@@ -354,7 +359,10 @@ export const completePersonaBatch = internalMutation({
         });
       }
     }
-    await ctx.db.patch("tests", batch.testId, {
+    const test = await ctx.db.get("tests", batch.testId);
+    if (!test) throw new Error("Test not found");
+    await syncDashboardStatsForTest(ctx, test, "running_respondents");
+    await ctx.db.patch("tests", test._id, {
       status: "running_respondents",
       updatedAt: now,
     });
@@ -462,6 +470,7 @@ export const dispatchRespondents = internalMutation({
       progress.completedRespondents + progress.failedRespondents >=
         progress.totalRespondents
     ) {
+      await syncDashboardStatsForTest(ctx, test, "synthesizing");
       await ctx.db.patch("tests", test._id, {
         status: "synthesizing",
         updatedAt: now,

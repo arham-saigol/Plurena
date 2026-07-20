@@ -103,6 +103,10 @@ describe("authenticated financial invariants", () => {
     expect(
       entries.filter((entry) => entry.type === "test_charge"),
     ).toHaveLength(1);
+    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
+      active: 1,
+      completed: 0,
+    });
   });
 
   it("keeps draft progress in sync with respondent-count edits", async () => {
@@ -122,14 +126,14 @@ describe("authenticated financial invariants", () => {
     expect(details.progress?.totalRespondents).toBe(50);
   });
 
-  it("paginates every test beyond the first fifty", async () => {
+  it("paginates test history without scanning it for dashboard counts", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     await t.run(async (ctx) => {
       const user = await ctx.db.query("users").first();
       if (!user) throw new Error("Expected Alice's user record");
-      for (let index = 0; index < 51; index += 1) {
+      for (let index = 0; index < 151; index += 1) {
         const now = Date.now() + index;
         const testId = await ctx.db.insert("tests", {
           ownerId: user._id,
@@ -140,6 +144,7 @@ describe("authenticated financial invariants", () => {
           respondentCount: 20,
           respondentModel: "glm_5_2",
           status: "completed",
+          dashboardBucket: "completed",
           createdAt: now,
           updatedAt: now,
           completedAt: now,
@@ -157,6 +162,12 @@ describe("authenticated financial invariants", () => {
           updatedAt: now,
         });
       }
+      const stats = await ctx.db.query("dashboardStats").first();
+      if (!stats) throw new Error("Expected dashboard stats");
+      await ctx.db.patch("dashboardStats", stats._id, {
+        completed: 151,
+        updatedAt: Date.now(),
+      });
     });
 
     const firstPage = await alice.query(api.tests.dashboard, {
@@ -168,14 +179,22 @@ describe("authenticated financial invariants", () => {
         numItems: 50,
       },
     });
+    const thirdPage = await alice.query(api.tests.dashboard, {
+      paginationOpts: {
+        cursor: secondPage.continueCursor,
+        numItems: 100,
+      },
+    });
 
     expect(firstPage.page).toHaveLength(50);
     expect(firstPage.isDone).toBe(false);
-    expect(secondPage.page).toHaveLength(1);
-    expect(secondPage.isDone).toBe(true);
+    expect(secondPage.page).toHaveLength(50);
+    expect(secondPage.isDone).toBe(false);
+    expect(thirdPage.page).toHaveLength(51);
+    expect(thirdPage.isDone).toBe(true);
     await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
       active: 0,
-      completed: 51,
+      completed: 151,
     });
   });
 
@@ -506,6 +525,10 @@ describe("lease recovery", () => {
     expect(state.batch?.status).toBe("failed");
     expect(state.test?.status).toBe("failed");
     expect(state.progress?.status).toBe("failed");
+    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
+      active: 0,
+      completed: 0,
+    });
     expect((await alice.query(api.users.current)).balanceCents).toBe(600);
     expect(
       (await alice.query(api.users.ledger, { limit: 10 })).filter(

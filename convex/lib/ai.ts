@@ -2,12 +2,18 @@
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText, Output, type ModelMessage } from "ai";
+import {
+  generateText,
+  NoObjectGeneratedError,
+  Output,
+  type ModelMessage,
+} from "ai";
 import type { z } from "zod";
 import { env } from "../_generated/server";
 import {
   classifyProviderError,
   getModelRoutes,
+  ModelOutputValidationError,
   ROUTED_GENERATION_DEADLINE_MS,
   MODEL_ROUTE_TIMEOUT_MS,
   type ModelKey,
@@ -170,7 +176,11 @@ export async function generateStructured<T>({
         });
         continue;
       }
-      const classified = classifyProviderError(error);
+      const classified = classifyProviderError(
+        NoObjectGeneratedError.isInstance(error)
+          ? new ModelOutputValidationError(error.message)
+          : error,
+      );
       lastAttemptedFailure = classified;
       if (classified.retryable) {
         lastRetryableFailure = { ...classified, retryable: true };

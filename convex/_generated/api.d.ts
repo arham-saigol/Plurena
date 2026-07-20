@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_aggregation from "../lib/aggregation.js";
 import type * as lib_ai from "../lib/ai.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_dashboardStats from "../lib/dashboardStats.js";
 import type * as lib_models from "../lib/models.js";
 import type * as lib_pricing from "../lib/pricing.js";
 import type * as lib_structuredSchemas from "../lib/structuredSchemas.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "lib/aggregation": typeof lib_aggregation;
   "lib/ai": typeof lib_ai;
   "lib/auth": typeof lib_auth;
+  "lib/dashboardStats": typeof lib_dashboardStats;
   "lib/models": typeof lib_models;
   "lib/pricing": typeof lib_pricing;
   "lib/structuredSchemas": typeof lib_structuredSchemas;
