@@ -151,6 +151,16 @@ export const MODEL_CATALOG = {
   },
 } as const;
 
+export const MODEL_ROUTE_TIMEOUT_MS = 60_000;
+// Cover every configured fallback route plus payload loading and result writes.
+export const ROUTED_GENERATION_LEASE_MS =
+  Object.values(MODEL_CATALOG).reduce(
+    (routeCount, model) => routeCount + model.routes.length,
+    0,
+  ) *
+    MODEL_ROUTE_TIMEOUT_MS +
+  60_000;
+
 export type ModelKey = keyof typeof MODEL_CATALOG;
 export type ProviderKey = "opencode_go" | "openrouter";
 export type ProviderProtocol = "openai" | "anthropic";

@@ -7,12 +7,12 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { aggregateResponses, calculateFailureRefund } from "./lib/aggregation";
+import { ROUTED_GENERATION_LEASE_MS } from "./lib/models";
 import { modelKeyValidator, providerValidator } from "./lib/validators";
 
 const SYNTHESIS_GROUP_SIZE = 25;
 const FINAL_BATCH_NUMBER = 10_000;
 const MAX_SYNTHESIS_ATTEMPTS = 3;
-const LEASE_MS = 2 * 60 * 1_000;
 
 const narrativeValidator = v.object({
   executiveSummary: v.string(),
@@ -274,7 +274,7 @@ export const claimBatch = internalMutation({
     await ctx.db.patch("synthesisBatches", batch._id, {
       status: "running",
       attempts: batch.attempts + 1,
-      leaseExpiresAt: now + LEASE_MS,
+      leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
       updatedAt: now,
     });
     return true;

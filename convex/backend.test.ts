@@ -53,6 +53,15 @@ function personaFixtures() {
   }));
 }
 
+async function launchedTestAsAlice() {
+  const t = convexTest(schema, modules);
+  const alice = t.withIdentity(aliceIdentity);
+  await alice.mutation(api.users.syncCurrentUser, {});
+  const testId = await alice.mutation(api.tests.saveDraft, draft);
+  await alice.mutation(api.tests.launch, { testId });
+  return { t, alice, testId };
+}
+
 describe("authenticated financial invariants", () => {
   it("grants onboarding credit exactly once and isolates user data", async () => {
     const t = convexTest(schema, modules);
@@ -111,6 +120,82 @@ describe("authenticated financial invariants", () => {
     const details = await alice.query(api.tests.get, { testId });
     expect(details.test.respondentCount).toBe(50);
     expect(details.progress?.totalRespondents).toBe(50);
+  });
+
+  it("deletes draft image assets only after their last reference", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(aliceIdentity);
+    await alice.mutation(api.users.syncCurrentUser, {});
+    const { sharedStorageId, uniqueStorageId, sharedAssetId, uniqueAssetId } =
+      await t.run(async (ctx) => {
+        const user = await ctx.db.query("users").first();
+        if (!user) throw new Error("Expected Alice's user record");
+        const sharedStorageId = await ctx.storage.store(new Blob(["shared"]));
+        const uniqueStorageId = await ctx.storage.store(new Blob(["unique"]));
+        const sharedAssetId = await ctx.db.insert("uploadedAssets", {
+          ownerId: user._id,
+          storageId: sharedStorageId,
+          filename: "shared.png",
+          contentType: "image/png",
+          sizeBytes: 6,
+          createdAt: Date.now(),
+        });
+        const uniqueAssetId = await ctx.db.insert("uploadedAssets", {
+          ownerId: user._id,
+          storageId: uniqueStorageId,
+          filename: "unique.png",
+          contentType: "image/png",
+          sizeBytes: 6,
+          createdAt: Date.now(),
+        });
+        return {
+          sharedStorageId,
+          uniqueStorageId,
+          sharedAssetId,
+          uniqueAssetId,
+        };
+      });
+    const imageDraft = {
+      ...draft,
+      optionType: "image" as const,
+      respondentModel: "minimax_m3" as const,
+    };
+    const firstTestId = await alice.mutation(api.tests.saveDraft, {
+      ...imageDraft,
+      options: [
+        { kind: "image", label: "Shared", assetId: sharedAssetId },
+        { kind: "image", label: "Unique", assetId: uniqueAssetId },
+      ],
+    });
+    const secondTestId = await alice.mutation(api.tests.saveDraft, {
+      ...imageDraft,
+      options: [
+        { kind: "image", label: "Shared A", assetId: sharedAssetId },
+        { kind: "image", label: "Shared B", assetId: sharedAssetId },
+      ],
+    });
+
+    await alice.mutation(api.tests.removeDraft, { testId: firstTestId });
+
+    const afterFirstDelete = await t.run(async (ctx) => ({
+      sharedAsset: await ctx.db.get("uploadedAssets", sharedAssetId),
+      hasSharedBlob: (await ctx.storage.get(sharedStorageId)) !== null,
+      uniqueAsset: await ctx.db.get("uploadedAssets", uniqueAssetId),
+      hasUniqueBlob: (await ctx.storage.get(uniqueStorageId)) !== null,
+    }));
+    expect(afterFirstDelete.sharedAsset).not.toBeNull();
+    expect(afterFirstDelete.hasSharedBlob).toBe(true);
+    expect(afterFirstDelete.uniqueAsset).toBeNull();
+    expect(afterFirstDelete.hasUniqueBlob).toBe(false);
+
+    await alice.mutation(api.tests.removeDraft, { testId: secondTestId });
+
+    const afterLastDelete = await t.run(async (ctx) => ({
+      sharedAsset: await ctx.db.get("uploadedAssets", sharedAssetId),
+      hasSharedBlob: (await ctx.storage.get(sharedStorageId)) !== null,
+    }));
+    expect(afterLastDelete.sharedAsset).toBeNull();
+    expect(afterLastDelete.hasSharedBlob).toBe(false);
   });
 
   it("credits a verified checkout exactly once across duplicate webhooks", async () => {
@@ -206,11 +291,7 @@ describe("authenticated financial invariants", () => {
 
 describe("lease recovery", () => {
   it("fails and refunds a persona batch whose final lease expired", async () => {
-    const t = convexTest(schema, modules);
-    const alice = t.withIdentity(aliceIdentity);
-    await alice.mutation(api.users.syncCurrentUser, {});
-    const testId = await alice.mutation(api.tests.saveDraft, draft);
-    await alice.mutation(api.tests.launch, { testId });
+    const { t, alice, testId } = await launchedTestAsAlice();
     const batchId = await t.run(async (ctx) => {
       const batch = await ctx.db.query("personaBatches").first();
       if (!batch) throw new Error("Expected persona batch");
@@ -244,11 +325,7 @@ describe("lease recovery", () => {
   });
 
   it("fails an exhausted respondent and advances progress", async () => {
-    const t = convexTest(schema, modules);
-    const alice = t.withIdentity(aliceIdentity);
-    await alice.mutation(api.users.syncCurrentUser, {});
-    const testId = await alice.mutation(api.tests.saveDraft, draft);
-    await alice.mutation(api.tests.launch, { testId });
+    const { t, testId } = await launchedTestAsAlice();
     const batchId = await t.run(async (ctx) => {
       const batch = await ctx.db.query("personaBatches").first();
       if (!batch) throw new Error("Expected persona batch");
@@ -293,11 +370,7 @@ describe("lease recovery", () => {
   });
 
   it("terminally fails exhausted group and final synthesis leases", async () => {
-    const t = convexTest(schema, modules);
-    const alice = t.withIdentity(aliceIdentity);
-    await alice.mutation(api.users.syncCurrentUser, {});
-    const testId = await alice.mutation(api.tests.saveDraft, draft);
-    await alice.mutation(api.tests.launch, { testId });
+    const { t, testId } = await launchedTestAsAlice();
     const groupBatchId = await t.run(async (ctx) => {
       const test = await ctx.db.get("tests", testId);
       if (!test?.snapshotId) throw new Error("Expected test snapshot");
@@ -317,6 +390,7 @@ describe("lease recovery", () => {
     });
 
     await t.mutation(internal.synthesis.reclaimStaleBatches, {});
+    // Simulate the original worker completing after its lease was reclaimed.
     await t.mutation(internal.synthesis.completeBatch, {
       batchId: groupBatchId,
       summary: "Late result",

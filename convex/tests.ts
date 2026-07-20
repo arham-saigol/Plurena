@@ -304,8 +304,25 @@ export const removeDraft = mutation({
       .query("testOptions")
       .withIndex("by_testId_and_position", (q) => q.eq("testId", test._id))
       .take(MAX_OPTIONS + 1);
-    for (const option of options)
+    const assetIds = new Set(
+      options.flatMap((option) => (option.assetId ? [option.assetId] : [])),
+    );
+    for (const option of options) {
       await ctx.db.delete("testOptions", option._id);
+    }
+    for (const assetId of assetIds) {
+      const asset = await ctx.db.get("uploadedAssets", assetId);
+      if (!asset || asset.ownerId !== test.ownerId) continue;
+      const stillInUse = await ctx.db
+        .query("testOptions")
+        .withIndex("by_ownerId_and_storageId", (q) =>
+          q.eq("ownerId", test.ownerId).eq("storageId", asset.storageId),
+        )
+        .first();
+      if (stillInUse) continue;
+      await ctx.storage.delete(asset.storageId);
+      await ctx.db.delete("uploadedAssets", asset._id);
+    }
     const progress = await ctx.db
       .query("testProgress")
       .withIndex("by_testId", (q) => q.eq("testId", test._id))

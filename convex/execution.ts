@@ -14,12 +14,14 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
 } from "./lib/validators";
-import type { ProviderErrorClass } from "./lib/models";
+import {
+  ROUTED_GENERATION_LEASE_MS,
+  type ProviderErrorClass,
+} from "./lib/models";
 
 const PERSONA_BATCH_SIZE = 20;
 const RESPONDENT_CONCURRENCY = 5;
 const MAX_WORK_ATTEMPTS = 3;
-const LEASE_MS = 2 * 60 * 1_000;
 
 const personaDataValidator = v.object({
   displayName: v.string(),
@@ -172,7 +174,7 @@ export const claimPersonaBatch = internalMutation({
     await ctx.db.patch("personaBatches", batch._id, {
       status: "running",
       attempts: batch.attempts + 1,
-      leaseExpiresAt: now + LEASE_MS,
+      leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
       updatedAt: now,
     });
     return true;
@@ -434,7 +436,7 @@ export const dispatchRespondents = internalMutation({
       await ctx.db.patch("respondentRuns", run._id, {
         status: "running",
         attempts: run.attempts + 1,
-        leaseExpiresAt: now + LEASE_MS,
+        leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
         startedAt: run.startedAt ?? now,
         updatedAt: now,
       });

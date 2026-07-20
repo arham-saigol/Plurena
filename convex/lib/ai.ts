@@ -8,6 +8,7 @@ import { env } from "../_generated/server";
 import {
   classifyProviderError,
   getModelRoutes,
+  MODEL_ROUTE_TIMEOUT_MS,
   type ModelKey,
   type ProviderErrorClass,
   type ProviderKey,
@@ -119,7 +120,7 @@ export async function generateStructured<T>({
             maxOutputTokens,
             temperature: 0.35,
             maxRetries: 1,
-            abortSignal: AbortSignal.timeout(60_000),
+            abortSignal: AbortSignal.timeout(MODEL_ROUTE_TIMEOUT_MS),
           })
         : await generateText({
             model,
@@ -129,7 +130,7 @@ export async function generateStructured<T>({
             maxOutputTokens,
             temperature: 0.35,
             maxRetries: 1,
-            abortSignal: AbortSignal.timeout(60_000),
+            abortSignal: AbortSignal.timeout(MODEL_ROUTE_TIMEOUT_MS),
           });
       attempts.push({
         modelKey: route.modelKey,
