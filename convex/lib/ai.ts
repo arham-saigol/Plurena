@@ -106,15 +106,13 @@ export async function generateStructured<T>({
   const attempts: Array<ProviderAttempt> = [];
   const routes = getModelRoutes(requestedModel, requiresVision);
   const deadlineAt = Date.now() + ROUTED_GENERATION_DEADLINE_MS;
-  let lastError: unknown;
+  let lastAttemptedFailure:
+    { classification: ProviderErrorClass; retryable: boolean } | undefined;
 
   for (const route of routes) {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs <= 0) {
-      lastError = new DOMException(
-        "Routed generation deadline exceeded",
-        "TimeoutError",
-      );
+      lastAttemptedFailure = { classification: "timeout", retryable: true };
       break;
     }
     const startedAt = Date.now();
@@ -158,7 +156,6 @@ export async function generateStructured<T>({
         attempts,
       };
     } catch (error) {
-      lastError = error;
       if (error instanceof ProviderNotConfiguredError) {
         attempts.push({
           modelKey: route.modelKey,
@@ -170,6 +167,7 @@ export async function generateStructured<T>({
         continue;
       }
       const classified = classifyProviderError(error);
+      lastAttemptedFailure = classified;
       attempts.push({
         modelKey: route.modelKey,
         provider: route.provider,
@@ -177,7 +175,10 @@ export async function generateStructured<T>({
         errorClass: classified.classification,
         latencyMs: Date.now() - startedAt,
       });
-      if (!classified.retryable) {
+      if (
+        !classified.retryable &&
+        classified.classification !== "authentication"
+      ) {
         throw new RoutedGenerationError(
           "The model request could not be completed",
           attempts,
@@ -188,10 +189,10 @@ export async function generateStructured<T>({
     }
   }
 
-  const classified =
-    lastError instanceof ProviderNotConfiguredError
-      ? { classification: "configuration" as const, retryable: false }
-      : classifyProviderError(lastError);
+  const classified = lastAttemptedFailure ?? {
+    classification: "configuration" as const,
+    retryable: false,
+  };
   throw new RoutedGenerationError(
     "All eligible model routes were temporarily unavailable",
     attempts,
