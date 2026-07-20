@@ -261,8 +261,7 @@ function RespondentDialog({
 }
 
 function ResponsesTable({ testId }: { testId: Id<"tests"> }) {
-  const responses = useQuery(api.responses.list, { testId }) as
-    Array<ResponseView> | undefined;
+  const responses = useQuery(api.responses.list, { testId });
   const [search, setSearch] = useState("");
   const [confidence, setConfidence] = useState("all");
   const [selected, setSelected] = useState<ResponseView | null>(null);
@@ -621,8 +620,7 @@ function Results({ details }: { details: TestDetails }) {
 
 export function TestDetail({ testId }: { testId: Id<"tests"> }) {
   const router = useRouter();
-  const details = useQuery(api.tests.get, { testId }) as
-    TestDetails | undefined;
+  const details = useQuery(api.tests.get, { testId });
   const removeDraft = useMutation(api.tests.removeDraft);
   const [deleting, setDeleting] = useState(false);
   if (!details)

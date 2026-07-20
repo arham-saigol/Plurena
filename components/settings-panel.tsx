@@ -79,8 +79,17 @@ export function SettingsPanel() {
             account deletion.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0 [&_.cl-cardBox]:w-full [&_.cl-cardBox]:shadow-none [&_.cl-navbar]:border-r [&_.cl-rootBox]:w-full">
-          <UserProfile routing="hash" />
+        <CardContent className="p-0">
+          <UserProfile
+            routing="hash"
+            appearance={{
+              elements: {
+                cardBox: "w-full shadow-none",
+                navbar: "border-r",
+                rootBox: "w-full",
+              },
+            }}
+          />
         </CardContent>
       </Card>
     </div>

@@ -208,6 +208,7 @@ export function getModelRoutes(
 }
 
 export type ProviderErrorClass =
+  | "configuration"
   | "timeout"
   | "rate_limit"
   | "provider_unavailable"

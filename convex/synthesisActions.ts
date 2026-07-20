@@ -163,8 +163,12 @@ export const finalizeReport = internalAction({
       const positions = new Set(
         payload.options.map((option) => option.position),
       );
+      const insightPositions = new Set(
+        result.output.optionInsights.map((insight) => insight.optionPosition),
+      );
       if (
         result.output.optionInsights.length !== positions.size ||
+        insightPositions.size !== positions.size ||
         result.output.optionInsights.some(
           (insight) => !positions.has(insight.optionPosition),
         )

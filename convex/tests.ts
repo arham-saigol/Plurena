@@ -103,6 +103,16 @@ export const saveDraft = mutation({
         respondentModel: args.respondentModel,
         updatedAt: now,
       });
+      const existingProgress = await ctx.db
+        .query("testProgress")
+        .withIndex("by_testId", (q) => q.eq("testId", testId!))
+        .unique();
+      if (existingProgress) {
+        await ctx.db.patch("testProgress", existingProgress._id, {
+          totalRespondents: args.respondentCount,
+          updatedAt: now,
+        });
+      }
       const existingOptions = await ctx.db
         .query("testOptions")
         .withIndex("by_testId_and_position", (q) => q.eq("testId", testId!))

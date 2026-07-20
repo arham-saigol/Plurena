@@ -39,9 +39,10 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const sync = useMutation(api.users.syncCurrentUser);
   const [ready, setReady] = useState(false);
+  const [syncError, setSyncError] = useState<string>();
 
   useEffect(() => {
-    if (!isLoaded || !user || ready) return;
+    if (!isLoaded || !user || ready || syncError) return;
     void sync({
       email: user.primaryEmailAddress?.emailAddress,
       name: user.fullName ?? undefined,
@@ -49,13 +50,30 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
     })
       .then(() => setReady(true))
       .catch((error: unknown) => {
-        toast.error(
+        const message =
           error instanceof Error
             ? error.message
-            : "Could not initialize workspace",
-        );
+            : "Could not initialize workspace";
+        setSyncError(message);
+        toast.error(message);
       });
-  }, [isLoaded, ready, sync, user]);
+  }, [isLoaded, ready, sync, syncError, user]);
+
+  if (syncError) {
+    return (
+      <div className="bg-background grid min-h-screen place-items-center p-6">
+        <div className="max-w-sm text-center">
+          <p className="text-destructive text-sm font-medium">
+            Could not initialize workspace
+          </p>
+          <p className="text-muted-foreground mt-2 text-sm">{syncError}</p>
+          <Button className="mt-4" onClick={() => setSyncError(undefined)}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (

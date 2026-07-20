@@ -5,17 +5,15 @@ import { useQuery } from "convex/react";
 import { CircleDollarSign, FlaskConical, Plus, Sparkles } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
-import { TestList, type DashboardTest } from "@/components/test-list";
+import { TestList } from "@/components/test-list";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/utils";
 
 export function Dashboard({ all = false }: { all?: boolean }) {
-  const tests = useQuery(api.tests.dashboard) as
-    Array<DashboardTest> | undefined;
-  const user = useQuery(api.users.current) as
-    { balanceCents: number } | undefined;
+  const tests = useQuery(api.tests.dashboard);
+  const user = useQuery(api.users.current);
 
   if (!tests || !user) {
     return (

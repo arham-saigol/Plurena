@@ -20,7 +20,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -52,7 +52,11 @@ type Configuration = {
 
 type DraftDetails = {
   test: Doc<"tests">;
-  options: Array<Doc<"testOptions"> & { imageUrl?: string | null }>;
+  options: Array<
+    (Doc<"testOptions"> | Doc<"snapshotOptions">) & {
+      imageUrl?: string | null;
+    }
+  >;
 };
 
 const steps = ["Test", "Options", "Audience", "Review"];
@@ -79,14 +83,9 @@ export function TestWizard() {
   const searchParams = useSearchParams();
   const draftParam = searchParams.get("draft");
   const draftId = draftParam ? (draftParam as Id<"tests">) : undefined;
-  const configuration = useQuery(api.tests.configuration) as
-    Configuration | undefined;
-  const currentUser = useQuery(api.users.current) as
-    { balanceCents: number } | undefined;
-  const draft = useQuery(
-    api.tests.get,
-    draftId ? { testId: draftId } : "skip",
-  ) as DraftDetails | undefined;
+  const configuration = useQuery(api.tests.configuration);
+  const currentUser = useQuery(api.users.current);
+  const draft = useQuery(api.tests.get, draftId ? { testId: draftId } : "skip");
 
   if (!configuration || !currentUser || (draftId && !draft)) {
     return <WizardSkeleton />;
@@ -150,7 +149,7 @@ function TestWizardForm({
           key: option._id,
           label: option.label,
           text: option.text ?? "",
-          assetId: option.assetId,
+          assetId: "assetId" in option ? option.assetId : undefined,
           previewUrl: option.imageUrl ?? undefined,
           filename: option.filename,
         }))
@@ -165,6 +164,20 @@ function TestWizardForm({
     draft?.test.respondentModel ?? "deepseek_v4_flash",
   );
   const [saving, setSaving] = useState(false);
+  const previewUrls = useRef(new Set<string>());
+
+  useEffect(
+    () => () => {
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
+      previewUrls.current.clear();
+    },
+    [],
+  );
+
+  function revokePreviewUrl(previewUrl?: string) {
+    if (!previewUrl || !previewUrls.current.delete(previewUrl)) return;
+    URL.revokeObjectURL(previewUrl);
+  }
 
   const priceCents = useMemo(
     () =>
@@ -197,6 +210,7 @@ function TestWizardForm({
         configuration.models.find((model) => model.vision)?.key ?? "minimax_m3",
       );
     }
+    for (const option of options) revokePreviewUrl(option.previewUrl);
     setOptionType(nextType);
     setOptions([newOption(0), newOption(1)]);
   }
@@ -251,11 +265,14 @@ function TestWizardForm({
         storageId: body.storageId as Id<"_storage">,
         filename: file.name,
       })) as Id<"uploadedAssets">;
+      const previewUrl = URL.createObjectURL(file);
+      previewUrls.current.add(previewUrl);
+      revokePreviewUrl(option.previewUrl);
       updateOption(option.key, {
         uploading: false,
         assetId,
         filename: file.name,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl,
       });
       toast.success("Image uploaded securely");
     } catch (error) {
@@ -499,11 +516,12 @@ function TestWizardForm({
                       variant="ghost"
                       aria-label="Remove option"
                       disabled={options.length <= 2}
-                      onClick={() =>
+                      onClick={() => {
+                        revokePreviewUrl(option.previewUrl);
                         setOptions((current) =>
                           current.filter((item) => item.key !== option.key),
-                        )
-                      }
+                        );
+                      }}
                     >
                       <Trash2 />
                     </Button>

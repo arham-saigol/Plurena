@@ -1,4 +1,7 @@
-import { constructWebhookEvent } from "creem/webhooks";
+import {
+  constructWebhookEvent,
+  WebhookVerificationError,
+} from "creem/webhooks";
 import { z } from "zod";
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
@@ -38,11 +41,26 @@ http.route({
       });
     }
     const rawBody = await request.text();
+    let event: Awaited<ReturnType<typeof constructWebhookEvent>>;
     try {
-      const event = await constructWebhookEvent(rawBody, request.headers, {
+      event = await constructWebhookEvent(rawBody, request.headers, {
         secret: env.CREEM_WEBHOOK_SECRET,
       });
-      if (!event.id) return new Response("Missing event ID", { status: 400 });
+    } catch (error) {
+      if (
+        error instanceof WebhookVerificationError ||
+        error instanceof SyntaxError ||
+        (error instanceof Error &&
+          error.message.startsWith("Invalid webhook payload"))
+      ) {
+        return new Response("Invalid webhook", { status: 400 });
+      }
+      console.error("Creem webhook validation failed", error);
+      return new Response("Webhook validation failed", { status: 500 });
+    }
+    if (!event.id) return new Response("Missing event ID", { status: 400 });
+
+    try {
       if (event.type !== "checkout.completed") {
         await ctx.runMutation(internal.payments.processCheckoutWebhook, {
           eventId: event.id,
@@ -58,7 +76,11 @@ http.route({
         });
         return new Response("OK", { status: 200 });
       }
-      const checkout = checkoutSchema.parse(event.data);
+      const parsedCheckout = checkoutSchema.safeParse(event.data);
+      if (!parsedCheckout.success) {
+        return new Response("Invalid checkout", { status: 400 });
+      }
+      const checkout = parsedCheckout.data;
       const requestId = checkout.requestId ?? checkout.request_id;
       if (!requestId)
         return new Response("Missing request ID", { status: 400 });
@@ -78,8 +100,9 @@ http.route({
         orderStatus: checkout.order.status,
       });
       return new Response("OK", { status: 200 });
-    } catch {
-      return new Response("Invalid webhook", { status: 400 });
+    } catch (error) {
+      console.error("Creem webhook processing failed", error);
+      return new Response("Webhook processing failed", { status: 500 });
     }
   }),
 });

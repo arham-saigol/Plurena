@@ -152,6 +152,37 @@ async function scheduleNext(ctx: MutationCtx, testId: Id<"tests">) {
   }
 }
 
+async function terminallyFailBatch(
+  ctx: MutationCtx,
+  batch: Doc<"synthesisBatches">,
+  errorMessage: string,
+) {
+  const now = Date.now();
+  if (batch.batchNumber === FINAL_BATCH_NUMBER) {
+    await ctx.db.patch("synthesisBatches", batch._id, {
+      status: "failed",
+      leaseExpiresAt: undefined,
+      errorMessage: errorMessage.slice(0, 500),
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, internal.synthesis.finalizeFallback, {
+      batchId: batch._id,
+    });
+    return;
+  }
+  await ctx.db.patch("synthesisBatches", batch._id, {
+    status: "failed",
+    leaseExpiresAt: undefined,
+    summary: "This response group could not be synthesized.",
+    themes: [],
+    objections: [],
+    segmentSignals: [],
+    errorMessage: errorMessage.slice(0, 500),
+    updatedAt: now,
+  });
+  await scheduleNext(ctx, batch.testId);
+}
+
 export const start = internalMutation({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
@@ -232,7 +263,14 @@ export const claimBatch = internalMutation({
     ) {
       return false;
     }
-    if (batch.attempts >= MAX_SYNTHESIS_ATTEMPTS) return false;
+    if (batch.attempts >= MAX_SYNTHESIS_ATTEMPTS) {
+      await terminallyFailBatch(
+        ctx,
+        batch,
+        "Synthesis exhausted its retry limit",
+      );
+      return false;
+    }
     await ctx.db.patch("synthesisBatches", batch._id, {
       status: "running",
       attempts: batch.attempts + 1,
@@ -289,7 +327,8 @@ export const completeBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
-    if (!batch || batch.status === "completed") return null;
+    if (!batch || batch.status === "completed" || batch.status === "failed")
+      return null;
     await ctx.db.patch("synthesisBatches", batch._id, {
       status: "completed",
       leaseExpiresAt: undefined,
@@ -313,7 +352,8 @@ export const failBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
-    if (!batch || batch.status === "completed") return null;
+    if (!batch || batch.status === "completed" || batch.status === "failed")
+      return null;
     const now = Date.now();
     if (args.retryable && batch.attempts < MAX_SYNTHESIS_ATTEMPTS) {
       await ctx.db.patch("synthesisBatches", batch._id, {
@@ -331,29 +371,7 @@ export const failBatch = internalMutation({
       });
       return null;
     }
-    if (batch.batchNumber === FINAL_BATCH_NUMBER) {
-      await ctx.db.patch("synthesisBatches", batch._id, {
-        status: "failed",
-        leaseExpiresAt: undefined,
-        errorMessage: args.errorMessage.slice(0, 500),
-        updatedAt: now,
-      });
-      await ctx.scheduler.runAfter(0, internal.synthesis.finalizeFallback, {
-        batchId: batch._id,
-      });
-      return null;
-    }
-    await ctx.db.patch("synthesisBatches", batch._id, {
-      status: "failed",
-      leaseExpiresAt: undefined,
-      summary: "This response group could not be synthesized.",
-      themes: [],
-      objections: [],
-      segmentSignals: [],
-      errorMessage: args.errorMessage.slice(0, 500),
-      updatedAt: now,
-    });
-    await scheduleNext(ctx, batch.testId);
+    await terminallyFailBatch(ctx, batch, args.errorMessage);
     return null;
   },
 });
@@ -587,6 +605,14 @@ export const reclaimStaleBatches = internalMutation({
       )
       .take(20);
     for (const batch of stale) {
+      if (batch.attempts >= MAX_SYNTHESIS_ATTEMPTS) {
+        await terminallyFailBatch(
+          ctx,
+          batch,
+          "Worker lease expired after the final synthesis attempt",
+        );
+        continue;
+      }
       await ctx.db.patch("synthesisBatches", batch._id, {
         status: "pending",
         leaseExpiresAt: undefined,

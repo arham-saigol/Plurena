@@ -1,13 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
+  error,
   reset,
 }: {
   error: Error;
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Unhandled application error", error);
+  }, [error]);
+
   return (
     <main className="grid min-h-screen place-items-center p-6">
       <div className="max-w-md text-center">

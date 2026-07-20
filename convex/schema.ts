@@ -106,8 +106,8 @@ export default defineSchema({
     context: v.optional(v.string()),
     respondentCount: respondentCountValidator,
     respondentModel: modelKeyValidator,
-    personaModel: v.literal("glm_5_2"),
-    synthesisModel: v.literal("glm_5_2"),
+    personaModel: modelKeyValidator,
+    synthesisModel: modelKeyValidator,
     chargedPriceCents: v.number(),
     createdAt: v.number(),
   })

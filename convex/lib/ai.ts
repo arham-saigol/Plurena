@@ -146,6 +146,13 @@ export async function generateStructured<T>({
     } catch (error) {
       lastError = error;
       if (error instanceof ProviderNotConfiguredError) {
+        attempts.push({
+          modelKey: route.modelKey,
+          provider: route.provider,
+          status: "failed",
+          errorClass: "configuration",
+          latencyMs: Date.now() - startedAt,
+        });
         continue;
       }
       const classified = classifyProviderError(error);
@@ -167,11 +174,14 @@ export async function generateStructured<T>({
     }
   }
 
-  const classified = classifyProviderError(lastError);
+  const classified =
+    lastError instanceof ProviderNotConfiguredError
+      ? { classification: "configuration" as const, retryable: false }
+      : classifyProviderError(lastError);
   throw new RoutedGenerationError(
     "All eligible model routes were temporarily unavailable",
     attempts,
     classified.classification,
-    true,
+    classified.retryable,
   );
 }

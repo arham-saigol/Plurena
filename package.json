@@ -28,6 +28,9 @@
     "url": "https://github.com/arham-saigol/Plurena/issues"
   },
   "homepage": "https://github.com/arham-saigol/Plurena#readme",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.98",
     "@ai-sdk/openai-compatible": "^2.0.62",

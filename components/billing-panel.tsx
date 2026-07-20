@@ -178,6 +178,7 @@ export function BillingPanel() {
                         {new Intl.DateTimeFormat("en-US", {
                           dateStyle: "medium",
                           timeStyle: "short",
+                          timeZone: "UTC",
                         }).format(entry.createdAt)}
                       </p>
                     </div>

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation,
   internalQuery,
@@ -14,6 +14,7 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
 } from "./lib/validators";
+import type { ProviderErrorClass } from "./lib/models";
 
 const PERSONA_BATCH_SIZE = 20;
 const RESPONDENT_CONCURRENCY = 5;
@@ -76,6 +77,75 @@ async function fullRefund(
   return test.priceCents;
 }
 
+async function terminallyFailPersonaBatch(
+  ctx: MutationCtx,
+  batch: Doc<"personaBatches">,
+  errorMessage: string,
+) {
+  const now = Date.now();
+  await ctx.db.patch("personaBatches", batch._id, {
+    status: "failed",
+    leaseExpiresAt: undefined,
+    errorMessage: errorMessage.slice(0, 500),
+    updatedAt: now,
+  });
+  await ctx.db.patch("tests", batch.testId, {
+    status: "failed",
+    completedAt: now,
+    updatedAt: now,
+  });
+  const progress = await ctx.db
+    .query("testProgress")
+    .withIndex("by_testId", (q) => q.eq("testId", batch.testId))
+    .unique();
+  if (progress) {
+    await ctx.db.patch("testProgress", progress._id, {
+      status: "failed",
+      phaseLabel: "Could not build a valid audience — charge refunded",
+      updatedAt: now,
+    });
+  }
+  await fullRefund(
+    ctx,
+    batch.testId,
+    "Automatic refund: audience generation failed",
+  );
+}
+
+async function terminallyFailRespondent(
+  ctx: MutationCtx,
+  run: Doc<"respondentRuns">,
+  errorClass: ProviderErrorClass,
+  errorMessage: string,
+) {
+  const now = Date.now();
+  await ctx.db.patch("respondentRuns", run._id, {
+    status: "failed",
+    leaseExpiresAt: undefined,
+    completedAt: now,
+    errorClass,
+    errorMessage: errorMessage.slice(0, 500),
+    updatedAt: now,
+  });
+  const progress = await ctx.db
+    .query("testProgress")
+    .withIndex("by_testId", (q) => q.eq("testId", run.testId))
+    .unique();
+  if (progress) {
+    await ctx.db.patch("testProgress", progress._id, {
+      failedRespondents: progress.failedRespondents + 1,
+      runningRespondents:
+        run.status === "running"
+          ? Math.max(0, progress.runningRespondents - 1)
+          : progress.runningRespondents,
+      updatedAt: now,
+    });
+  }
+  await ctx.scheduler.runAfter(0, internal.execution.dispatchRespondents, {
+    testId: run.testId,
+  });
+}
+
 export const claimPersonaBatch = internalMutation({
   args: { batchId: v.id("personaBatches") },
   handler: async (ctx, args) => {
@@ -91,7 +161,14 @@ export const claimPersonaBatch = internalMutation({
     ) {
       return false;
     }
-    if (batch.attempts >= MAX_WORK_ATTEMPTS) return false;
+    if (batch.attempts >= MAX_WORK_ATTEMPTS) {
+      await terminallyFailPersonaBatch(
+        ctx,
+        batch,
+        "Persona generation exhausted its retry limit",
+      );
+      return false;
+    }
     await ctx.db.patch("personaBatches", batch._id, {
       status: "running",
       attempts: batch.attempts + 1,
@@ -160,7 +237,8 @@ export const completePersonaBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("personaBatches", args.batchId);
-    if (!batch || batch.status === "completed") return null;
+    if (!batch || batch.status === "completed" || batch.status === "failed")
+      return null;
     if (batch.status !== "running")
       throw new Error("Persona batch is not claimed");
     if (args.personas.length !== batch.requestedCount) {
@@ -298,7 +376,8 @@ export const failPersonaBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("personaBatches", args.batchId);
-    if (!batch || batch.status === "completed") return null;
+    if (!batch || batch.status === "completed" || batch.status === "failed")
+      return null;
     const now = Date.now();
     if (args.retryable && batch.attempts < MAX_WORK_ATTEMPTS) {
       await ctx.db.patch("personaBatches", batch._id, {
@@ -314,33 +393,7 @@ export const failPersonaBatch = internalMutation({
       );
       return null;
     }
-    await ctx.db.patch("personaBatches", batch._id, {
-      status: "failed",
-      leaseExpiresAt: undefined,
-      errorMessage: args.errorMessage.slice(0, 500),
-      updatedAt: now,
-    });
-    await ctx.db.patch("tests", batch.testId, {
-      status: "failed",
-      completedAt: now,
-      updatedAt: now,
-    });
-    const progress = await ctx.db
-      .query("testProgress")
-      .withIndex("by_testId", (q) => q.eq("testId", batch.testId))
-      .unique();
-    if (progress) {
-      await ctx.db.patch("testProgress", progress._id, {
-        status: "failed",
-        phaseLabel: "Could not build a valid audience — charge refunded",
-        updatedAt: now,
-      });
-    }
-    await fullRefund(
-      ctx,
-      batch.testId,
-      "Automatic refund: audience generation failed",
-    );
+    await terminallyFailPersonaBatch(ctx, batch, args.errorMessage);
     return null;
   },
 });
@@ -367,7 +420,17 @@ export const dispatchRespondents = internalMutation({
             .take(available)
         : [];
     const now = Date.now();
+    let launched = 0;
     for (const run of pending) {
+      if (run.attempts >= MAX_WORK_ATTEMPTS) {
+        await terminallyFailRespondent(
+          ctx,
+          run,
+          run.errorClass ?? "unknown",
+          run.errorMessage ?? "Respondent exhausted its retry limit",
+        );
+        continue;
+      }
       await ctx.db.patch("respondentRuns", run._id, {
         status: "running",
         attempts: run.attempts + 1,
@@ -378,6 +441,7 @@ export const dispatchRespondents = internalMutation({
       await ctx.scheduler.runAfter(0, internal.executionActions.runRespondent, {
         runId: run._id,
       });
+      launched += 1;
     }
     const progress = await ctx.db
       .query("testProgress")
@@ -385,7 +449,7 @@ export const dispatchRespondents = internalMutation({
       .unique();
     if (!progress) throw new Error("Test progress not found");
     await ctx.db.patch("testProgress", progress._id, {
-      runningRespondents: running.length + pending.length,
+      runningRespondents: running.length + launched,
       phaseLabel: `Collected ${progress.completedRespondents} of ${progress.totalRespondents} responses`,
       updatedAt: now,
     });
@@ -525,10 +589,18 @@ export const failRespondent = internalMutation({
       return null;
     const now = Date.now();
     const shouldRetry = args.retryable && run.attempts < MAX_WORK_ATTEMPTS;
+    if (!shouldRetry) {
+      await terminallyFailRespondent(
+        ctx,
+        run,
+        args.errorClass,
+        args.errorMessage,
+      );
+      return null;
+    }
     await ctx.db.patch("respondentRuns", run._id, {
-      status: shouldRetry ? "pending" : "failed",
+      status: "pending",
       leaseExpiresAt: undefined,
-      completedAt: shouldRetry ? undefined : now,
       errorClass: args.errorClass,
       errorMessage: args.errorMessage.slice(0, 500),
       updatedAt: now,
@@ -537,17 +609,14 @@ export const failRespondent = internalMutation({
       .query("testProgress")
       .withIndex("by_testId", (q) => q.eq("testId", run.testId))
       .unique();
-    if (progress) {
+    if (progress && run.status === "running") {
       await ctx.db.patch("testProgress", progress._id, {
-        failedRespondents: shouldRetry
-          ? progress.failedRespondents
-          : progress.failedRespondents + 1,
         runningRespondents: Math.max(0, progress.runningRespondents - 1),
         updatedAt: now,
       });
     }
     await ctx.scheduler.runAfter(
-      shouldRetry ? 2 ** run.attempts * 2_000 : 0,
+      2 ** run.attempts * 2_000,
       internal.execution.dispatchRespondents,
       { testId: run.testId },
     );
@@ -566,6 +635,14 @@ export const reclaimStaleWork = internalMutation({
       )
       .take(20);
     for (const batch of stalePersonaBatches) {
+      if (batch.attempts >= MAX_WORK_ATTEMPTS) {
+        await terminallyFailPersonaBatch(
+          ctx,
+          batch,
+          "Worker lease expired after the final persona attempt",
+        );
+        continue;
+      }
       await ctx.db.patch("personaBatches", batch._id, {
         status: "pending",
         leaseExpiresAt: undefined,
@@ -589,6 +666,15 @@ export const reclaimStaleWork = internalMutation({
       .take(50);
     const affectedTests = new Set<Id<"tests">>();
     for (const run of staleRuns) {
+      if (run.attempts >= MAX_WORK_ATTEMPTS) {
+        await terminallyFailRespondent(
+          ctx,
+          run,
+          "timeout",
+          "Worker lease expired after the final respondent attempt",
+        );
+        continue;
+      }
       await ctx.db.patch("respondentRuns", run._id, {
         status: "pending",
         leaseExpiresAt: undefined,

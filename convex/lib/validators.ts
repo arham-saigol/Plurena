@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { MODEL_KEYS } from "./models";
 
 export const respondentCountValidator = v.union(
   v.literal(20),
@@ -11,16 +12,7 @@ export const respondentCountValidator = v.union(
 );
 
 export const modelKeyValidator = v.union(
-  v.literal("minimax_m3"),
-  v.literal("glm_5_2"),
-  v.literal("deepseek_v4_pro"),
-  v.literal("deepseek_v4_flash"),
-  v.literal("kimi_k2_6"),
-  v.literal("kimi_k2_7_code"),
-  v.literal("qwen3_7_plus"),
-  v.literal("mimo_v2_5"),
-  v.literal("hy3"),
-  v.literal("step_3_7_flash"),
+  ...MODEL_KEYS.map((key) => v.literal(key)),
 );
 
 export const optionTypeValidator = v.union(
@@ -78,6 +70,7 @@ export const providerAttemptStatusValidator = v.union(
 );
 
 export const errorClassValidator = v.union(
+  v.literal("configuration"),
   v.literal("timeout"),
   v.literal("rate_limit"),
   v.literal("provider_unavailable"),
