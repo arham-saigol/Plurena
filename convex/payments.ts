@@ -178,18 +178,15 @@ export const processCheckoutWebhook = internalMutation({
       .withIndex("by_requestId", (q) => q.eq("requestId", args.requestId))
       .unique();
     if (!session) throw new Error("Checkout session is not available yet");
-    const option = getCreditOption(session.optionKey);
     const valid =
       session.checkoutId === args.checkoutId &&
       session.productId === args.productId &&
-      session.priceCents === option.priceCents &&
-      session.credits === option.credits &&
       (args.productPriceCents === undefined ||
-        args.productPriceCents === option.priceCents) &&
+        args.productPriceCents === session.priceCents) &&
       args.units === 1 &&
       (args.orderProductId === undefined ||
         args.orderProductId === session.productId) &&
-      args.orderAmountCents === option.priceCents &&
+      args.orderAmountCents === session.priceCents &&
       args.orderCurrency.toUpperCase() === "USD" &&
       args.orderStatus === "paid";
     const now = Date.now();

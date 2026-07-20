@@ -474,17 +474,20 @@ describe("authenticated financial invariants", () => {
       checkoutId: "ch_123",
       checkoutUrl: "https://checkout.test/ch_123",
     });
+    await t.run((ctx) =>
+      ctx.db.patch(session._id, { priceCents: 2_400, credits: 130 }),
+    );
     const webhook = {
       eventId: "evt_123",
       payloadHash: "sha256-hash",
       requestId,
       checkoutId: "ch_123",
       productId: "prod_credits_135",
-      productPriceCents: 2_500,
+      productPriceCents: 2_400,
       units: 1,
       orderId: "order_123",
       orderProductId: "prod_credits_135",
-      orderAmountCents: 2_500,
+      orderAmountCents: 2_400,
       orderCurrency: "USD",
       orderStatus: "paid",
       transactionId: "txn_123",
@@ -510,7 +513,7 @@ describe("authenticated financial invariants", () => {
         payloadHash: "sha256-redelivery-hash",
       }),
     ).toEqual({ duplicate: false, credited: false });
-    expect((await alice.query(api.users.current)).creditBalance).toBe(160);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(155);
 
     const refund = {
       eventId: "evt_refund_123",
@@ -519,14 +522,14 @@ describe("authenticated financial invariants", () => {
       reversalId: "refund_123",
       orderId: "order_123",
       transactionId: "txn_123",
-      amountCents: 625,
-      transactionAmountPaidCents: 2_500,
-      cumulativeRefundedAmountCents: 1_250,
+      amountCents: 600,
+      transactionAmountPaidCents: 2_400,
+      cumulativeRefundedAmountCents: 1_200,
       paymentStatus: "succeeded",
     };
     expect(
       await t.mutation(internal.payments.processPaymentReversal, refund),
-    ).toEqual({ duplicate: false, reversedCredits: 68 });
+    ).toEqual({ duplicate: false, reversedCredits: 65 });
     expect(
       await t.mutation(internal.payments.processPaymentReversal, refund),
     ).toEqual({ duplicate: true, reversedCredits: 0 });
@@ -537,12 +540,12 @@ describe("authenticated financial invariants", () => {
         payloadHash: "refund-redelivery-hash",
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
-    expect((await alice.query(api.users.current)).creditBalance).toBe(92);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(90);
     expect(
       await alice.query(api.payments.checkoutStatus, { requestId }),
     ).toEqual({
       status: "partially_refunded",
-      credits: 135,
+      credits: 130,
       errorMessage: "Payment refunded; the corresponding credits were reversed",
     });
     expect(
@@ -556,7 +559,7 @@ describe("authenticated financial invariants", () => {
       await alice.query(api.payments.checkoutStatus, { requestId }),
     ).toEqual({
       status: "partially_refunded",
-      credits: 135,
+      credits: 130,
       errorMessage: "Payment refunded; the corresponding credits were reversed",
     });
     expect(
@@ -565,7 +568,7 @@ describe("authenticated financial invariants", () => {
         eventId: "evt_older_refund",
         payloadHash: "older-refund-hash",
         reversalId: "refund_older",
-        cumulativeRefundedAmountCents: 625,
+        cumulativeRefundedAmountCents: 600,
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect(
@@ -581,7 +584,7 @@ describe("authenticated financial invariants", () => {
         paymentStatus: refund.paymentStatus,
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
-    expect((await alice.query(api.users.current)).creditBalance).toBe(92);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(90);
     expect(
       await t.run(async (ctx) =>
         ctx.db
@@ -589,7 +592,7 @@ describe("authenticated financial invariants", () => {
           .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
           .unique(),
       ),
-    ).toMatchObject({ refundedAmountCents: 1_250, reversedCredits: 68 });
+    ).toMatchObject({ refundedAmountCents: 1_200, reversedCredits: 65 });
 
     const dispute = {
       eventId: "evt_dispute_123",
@@ -598,13 +601,13 @@ describe("authenticated financial invariants", () => {
       reversalId: "dispute_123",
       orderId: "order_123",
       transactionId: "txn_123",
-      amountCents: 1_250,
-      transactionAmountPaidCents: 2_500,
+      amountCents: 1_200,
+      transactionAmountPaidCents: 2_400,
       paymentStatus: "chargeback",
     };
     expect(
       await t.mutation(internal.payments.processPaymentReversal, dispute),
-    ).toEqual({ duplicate: false, reversedCredits: 67 });
+    ).toEqual({ duplicate: false, reversedCredits: 65 });
     expect(
       await t.mutation(internal.payments.processPaymentReversal, dispute),
     ).toEqual({ duplicate: true, reversedCredits: 0 });
@@ -613,7 +616,7 @@ describe("authenticated financial invariants", () => {
       await alice.query(api.payments.checkoutStatus, { requestId }),
     ).toEqual({
       status: "disputed",
-      credits: 135,
+      credits: 130,
       errorMessage: "Payment disputed; the corresponding credits were reversed",
     });
     const entries = await alice.query(api.users.ledger, { limit: 10 });
