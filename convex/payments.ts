@@ -383,29 +383,27 @@ export const processPaymentReversal = internalMutation({
       0,
       targetReversedCredits - session.reversedCredits,
     );
-    let appliedCredits = 0;
+    const user = await ctx.db.get("users", session.ownerId);
+    if (!user) throw new Error("Checkout owner no longer exists");
+    const resultingCreditBalance = user.creditBalance - creditsToReverse;
     if (creditsToReverse > 0) {
-      const user = await ctx.db.get("users", session.ownerId);
-      if (!user) throw new Error("Checkout owner no longer exists");
-      const resultingCreditBalance = user.creditBalance - creditsToReverse;
       await ctx.db.patch("users", user._id, {
         creditBalance: resultingCreditBalance,
         updatedAt: now,
       });
-      await ctx.db.insert("ledgerEntries", {
-        ownerId: user._id,
-        type: isRefund ? "payment_refund" : "payment_dispute",
-        amountCredits: -creditsToReverse,
-        resultingCreditBalance,
-        reason: isRefund
-          ? `Creem refund reversed ${creditsToReverse.toLocaleString("en-US")} credits`
-          : `Creem dispute reversed ${creditsToReverse.toLocaleString("en-US")} credits`,
-        externalKey,
-        checkoutId: session.checkoutId,
-        createdAt: now,
-      });
-      appliedCredits = creditsToReverse;
     }
+    await ctx.db.insert("ledgerEntries", {
+      ownerId: user._id,
+      type: isRefund ? "payment_refund" : "payment_dispute",
+      amountCredits: -creditsToReverse,
+      resultingCreditBalance,
+      reason: isRefund
+        ? `Creem refund reversed ${creditsToReverse.toLocaleString("en-US")} credits`
+        : `Creem dispute reversed ${creditsToReverse.toLocaleString("en-US")} credits`,
+      externalKey,
+      checkoutId: session.checkoutId,
+      createdAt: now,
+    });
     const reversedCredits = Math.max(
       session.reversedCredits,
       targetReversedCredits,
@@ -433,7 +431,7 @@ export const processPaymentReversal = internalMutation({
       createdAt: now,
       processedAt: now,
     });
-    return { duplicate: false, reversedCredits: appliedCredits };
+    return { duplicate: false, reversedCredits: creditsToReverse };
   },
 });
 

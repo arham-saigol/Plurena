@@ -568,6 +568,19 @@ describe("authenticated financial invariants", () => {
         cumulativeRefundedAmountCents: 625,
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, {
+        eventId: "evt_older_refund_redelivery",
+        eventType: refund.eventType,
+        payloadHash: "older-refund-redelivery-hash",
+        reversalId: "refund_older",
+        orderId: refund.orderId,
+        transactionId: refund.transactionId,
+        amountCents: refund.amountCents,
+        transactionAmountPaidCents: refund.transactionAmountPaidCents,
+        paymentStatus: refund.paymentStatus,
+      }),
+    ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect((await alice.query(api.users.current)).creditBalance).toBe(92);
     expect(
       await t.run(async (ctx) =>
@@ -609,7 +622,7 @@ describe("authenticated financial invariants", () => {
     ).toHaveLength(1);
     expect(
       entries.filter((entry) => entry.type === "payment_refund"),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(
       entries.filter((entry) => entry.type === "payment_dispute"),
     ).toHaveLength(1);
