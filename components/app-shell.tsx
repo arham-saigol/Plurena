@@ -11,7 +11,7 @@ import {
   useQuery,
 } from "convex/react";
 import {
-  CircleDollarSign,
+  Coins,
   FlaskConical,
   LayoutDashboard,
   Moon,
@@ -26,12 +26,12 @@ import { api } from "@/convex/_generated/api";
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatMoney } from "@/lib/utils";
+import { cn, formatCredits } from "@/lib/utils";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutDashboard },
   { href: "/app/tests", label: "Tests", icon: FlaskConical },
-  { href: "/app/billing", label: "Balance", icon: CircleDollarSign },
+  { href: "/app/billing", label: "Credits", icon: Coins },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
@@ -147,16 +147,16 @@ function Shell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="mt-6 px-2.5">
           <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
-            AVAILABLE BALANCE
+            AVAILABLE CREDITS
           </p>
           <p className="mt-1 text-lg font-semibold">
-            {currentUser ? formatMoney(currentUser.balanceCents) : "—"}
+            {currentUser ? formatCredits(currentUser.creditBalance) : "—"}
           </p>
           <Link
             href="/app/billing"
             className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--blue)] hover:underline"
           >
-            Add funds
+            Get credits
           </Link>
         </div>
         <div className="mt-auto flex items-center justify-between rounded-md px-2 py-2 hover:bg-[var(--sidebar-hover)]">

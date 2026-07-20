@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   confidenceValidator,
+  creditOptionKeyValidator,
   dashboardBucketValidator,
   errorClassValidator,
   familiarityValidator,
@@ -23,8 +24,7 @@ export default defineSchema({
     email: v.optional(v.string()),
     name: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    balanceCents: v.number(),
-    onboardingGranted: v.boolean(),
+    creditBalance: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -43,7 +43,7 @@ export default defineSchema({
     status: testStatusValidator,
     dashboardBucket: dashboardBucketValidator,
     snapshotId: v.optional(v.id("testSnapshots")),
-    priceCents: v.optional(v.number()),
+    creditCost: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     launchedAt: v.optional(v.number()),
@@ -122,7 +122,7 @@ export default defineSchema({
     respondentModel: modelKeyValidator,
     personaModel: modelKeyValidator,
     synthesisModel: modelKeyValidator,
-    chargedPriceCents: v.number(),
+    chargedCredits: v.number(),
     createdAt: v.number(),
   })
     .index("by_testId", ["testId"])
@@ -291,7 +291,7 @@ export default defineSchema({
     readableReport: v.string(),
     successfulResponses: v.number(),
     failedResponses: v.number(),
-    refundCents: v.number(),
+    refundedCredits: v.number(),
     modelKey: v.optional(modelKeyValidator),
     provider: v.optional(providerValidator),
     createdAt: v.number(),
@@ -317,22 +317,33 @@ export default defineSchema({
   checkoutSessions: defineTable({
     ownerId: v.id("users"),
     requestId: v.string(),
-    quantity: v.number(),
-    expectedCreditCents: v.number(),
+    optionKey: creditOptionKeyValidator,
+    productId: v.string(),
+    priceCents: v.number(),
+    credits: v.number(),
     status: v.union(
       v.literal("creating"),
       v.literal("pending"),
       v.literal("completed"),
       v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("partially_refunded"),
+      v.literal("refunded"),
+      v.literal("disputed"),
     ),
     checkoutId: v.optional(v.string()),
+    orderId: v.optional(v.string()),
+    transactionId: v.optional(v.string()),
     checkoutUrl: v.optional(v.string()),
+    refundedAmountCents: v.number(),
+    reversedCredits: v.number(),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_requestId", ["requestId"])
     .index("by_checkoutId", ["checkoutId"])
+    .index("by_orderId", ["orderId"])
     .index("by_ownerId_and_createdAt", ["ownerId", "createdAt"]),
 
   webhookEvents: defineTable({
@@ -353,8 +364,8 @@ export default defineSchema({
   ledgerEntries: defineTable({
     ownerId: v.id("users"),
     type: ledgerTypeValidator,
-    amountCents: v.number(),
-    resultingBalanceCents: v.number(),
+    amountCredits: v.number(),
+    resultingCreditBalance: v.number(),
     reason: v.string(),
     externalKey: v.string(),
     testId: v.optional(v.id("tests")),

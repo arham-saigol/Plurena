@@ -85,7 +85,7 @@ describe("authenticated financial invariants", () => {
     await expect(bob.query(api.tests.get, { testId })).rejects.toThrow(
       "Unauthorized",
     );
-    expect((await alice.query(api.users.current)).balanceCents).toBe(600);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(await alice.query(api.users.ledger, { limit: 10 })).toHaveLength(1);
   });
 
@@ -98,15 +98,40 @@ describe("authenticated financial invariants", () => {
     const firstSnapshot = await alice.mutation(api.tests.launch, { testId });
     const secondSnapshot = await alice.mutation(api.tests.launch, { testId });
     expect(secondSnapshot).toBe(firstSnapshot);
-    expect((await alice.query(api.users.current)).balanceCents).toBe(100);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(5);
     const entries = await alice.query(api.users.ledger, { limit: 10 });
-    expect(
-      entries.filter((entry) => entry.type === "test_charge"),
-    ).toHaveLength(1);
+    const charges = entries.filter((entry) => entry.type === "test_charge");
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.amountCredits).toBe(-20);
     await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
       active: 1,
       completed: 0,
     });
+  });
+
+  it("charges a 250-respondent test exactly 250 credits", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(aliceIdentity);
+    await alice.mutation(api.users.syncCurrentUser, {});
+    await t.run(async (ctx) => {
+      const user = await ctx.db.query("users").first();
+      if (!user) throw new Error("Expected Alice's user record");
+      await ctx.db.patch("users", user._id, { creditBalance: 250 });
+    });
+    const testId = await alice.mutation(api.tests.saveDraft, {
+      ...draft,
+      respondentCount: 250,
+    });
+
+    const snapshotId = await alice.mutation(api.tests.launch, { testId });
+
+    expect((await alice.query(api.users.current)).creditBalance).toBe(0);
+    const state = await t.run(async (ctx) => ({
+      test: await ctx.db.get("tests", testId),
+      snapshot: await ctx.db.get("testSnapshots", snapshotId),
+    }));
+    expect(state.test?.creditCost).toBe(250);
+    expect(state.snapshot?.chargedCredits).toBe(250);
   });
 
   it("keeps draft progress in sync with respondent-count edits", async () => {
@@ -418,37 +443,137 @@ describe("authenticated financial invariants", () => {
     expect(result.hasSecond).toBe(false);
   });
 
-  it("credits a verified checkout exactly once across duplicate webhooks", async () => {
+  it("grants and reverses a fixed credit purchase exactly once", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const requestId = "checkout_request_123456";
     await t.mutation(internal.payments.prepareCheckout, {
       tokenIdentifier: aliceIdentity.tokenIdentifier,
-      quantity: 2,
+      optionKey: "credits_135",
+      productId: "prod_credits_135",
       requestId,
+    });
+    await expect(
+      t.mutation(internal.payments.prepareCheckout, {
+        tokenIdentifier: aliceIdentity.tokenIdentifier,
+        optionKey: "credits_135",
+        productId: "prod_credits_135",
+        requestId,
+      }),
+    ).rejects.toThrow("Checkout creation is already in progress");
+    const session = await t.run((ctx) =>
+      ctx.db
+        .query("checkoutSessions")
+        .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+        .unique(),
+    );
+    if (!session) throw new Error("Expected checkout session");
+    await t.mutation(internal.payments.completeCheckoutCreation, {
+      sessionId: session._id,
+      checkoutId: "ch_123",
+      checkoutUrl: "https://checkout.test/ch_123",
     });
     const webhook = {
       eventId: "evt_123",
-      eventType: "checkout.completed",
       payloadHash: "sha256-hash",
       requestId,
       checkoutId: "ch_123",
-      productId: "prod_plurena",
-      configuredProductId: "prod_plurena",
-      units: 2,
+      productId: "prod_credits_135",
+      productPriceCents: 2_500,
+      units: 1,
       orderId: "order_123",
+      orderProductId: "prod_credits_135",
+      orderAmountCents: 2_500,
+      orderCurrency: "USD",
       orderStatus: "paid",
+      transactionId: "txn_123",
     };
+    expect(
+      await t.mutation(internal.payments.processCheckoutWebhook, {
+        ...webhook,
+        eventId: "evt_bad_price",
+        payloadHash: "bad-price-hash",
+        orderAmountCents: 2_000,
+      }),
+    ).toEqual({ duplicate: false, credited: false });
     expect(
       await t.mutation(internal.payments.processCheckoutWebhook, webhook),
     ).toEqual({ duplicate: false, credited: true });
     expect(
       await t.mutation(internal.payments.processCheckoutWebhook, webhook),
     ).toEqual({ duplicate: true, credited: false });
-    expect((await alice.query(api.users.current)).balanceCents).toBe(1_600);
+    expect(
+      await t.mutation(internal.payments.processCheckoutWebhook, {
+        ...webhook,
+        eventId: "evt_123_redelivery",
+        payloadHash: "sha256-redelivery-hash",
+      }),
+    ).toEqual({ duplicate: false, credited: false });
+    expect((await alice.query(api.users.current)).creditBalance).toBe(160);
+
+    const refund = {
+      eventId: "evt_refund_123",
+      eventType: "refund.created" as const,
+      payloadHash: "refund-hash",
+      reversalId: "refund_123",
+      orderId: "order_123",
+      transactionId: "txn_123",
+      amountCents: 1_250,
+      transactionAmountPaidCents: 2_500,
+      cumulativeRefundedAmountCents: 1_250,
+      paymentStatus: "succeeded",
+    };
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, refund),
+    ).toEqual({ duplicate: false, reversedCredits: 68 });
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, refund),
+    ).toEqual({ duplicate: true, reversedCredits: 0 });
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, {
+        ...refund,
+        eventId: "evt_refund_redelivery",
+        payloadHash: "refund-redelivery-hash",
+      }),
+    ).toEqual({ duplicate: false, reversedCredits: 0 });
+    expect((await alice.query(api.users.current)).creditBalance).toBe(92);
+
+    const dispute = {
+      eventId: "evt_dispute_123",
+      eventType: "dispute.created" as const,
+      payloadHash: "dispute-hash",
+      reversalId: "dispute_123",
+      orderId: "order_123",
+      transactionId: "txn_123",
+      amountCents: 1_250,
+      transactionAmountPaidCents: 2_500,
+      paymentStatus: "chargeback",
+    };
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, dispute),
+    ).toEqual({ duplicate: false, reversedCredits: 67 });
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, dispute),
+    ).toEqual({ duplicate: true, reversedCredits: 0 });
+    expect((await alice.query(api.users.current)).creditBalance).toBe(25);
+    expect(
+      await alice.query(api.payments.checkoutStatus, { requestId }),
+    ).toEqual({
+      status: "disputed",
+      credits: 135,
+      errorMessage: "Payment disputed; the corresponding credits were reversed",
+    });
     const entries = await alice.query(api.users.ledger, { limit: 10 });
-    expect(entries.filter((entry) => entry.type === "top_up")).toHaveLength(1);
+    expect(
+      entries.filter((entry) => entry.type === "credit_purchase"),
+    ).toHaveLength(1);
+    expect(
+      entries.filter((entry) => entry.type === "payment_refund"),
+    ).toHaveLength(1);
+    expect(
+      entries.filter((entry) => entry.type === "payment_dispute"),
+    ).toHaveLength(1);
   });
 
   it("stores one response when respondent completion is delivered twice", async () => {
@@ -777,7 +902,7 @@ describe("lease recovery", () => {
       active: 0,
       completed: 0,
     });
-    expect((await alice.query(api.users.current)).balanceCents).toBe(600);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(
       (await alice.query(api.users.ledger, { limit: 10 })).filter(
         (entry) => entry.type === "test_refund",

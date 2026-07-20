@@ -20,7 +20,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatMoney } from "@/lib/utils";
+import { cn, formatCredits } from "@/lib/utils";
 
 type ModelKey = Doc<"tests">["respondentModel"];
 type OptionType = Doc<"tests">["optionType"];
@@ -46,7 +46,7 @@ type WizardOption = {
 };
 
 type Configuration = {
-  pricing: Array<{ respondentCount: RespondentCount; priceCents: number }>;
+  respondentCounts: ReadonlyArray<RespondentCount>;
   models: Array<{ key: ModelKey; label: string; vision: boolean }>;
 };
 
@@ -127,7 +127,7 @@ function TestWizardForm({
   draft,
 }: {
   configuration: Configuration;
-  currentUser: { balanceCents: number };
+  currentUser: { creditBalance: number };
   draftId?: Id<"tests">;
   draft?: DraftDetails;
 }) {
@@ -200,13 +200,7 @@ function TestWizardForm({
     void removeUpload({ assetId }).catch(() => undefined);
   }
 
-  const priceCents = useMemo(
-    () =>
-      configuration?.pricing.find(
-        (item) => item.respondentCount === respondentCount,
-      )?.priceCents,
-    [configuration, respondentCount],
-  );
+  const creditCost = respondentCount;
   const eligibleModels = configuration?.models.filter(
     (model) => optionType === "text" || model.vision,
   );
@@ -701,13 +695,9 @@ function TestWizardForm({
                     )
                   }
                 >
-                  {configuration.pricing.map((item) => (
-                    <option
-                      key={item.respondentCount}
-                      value={item.respondentCount}
-                    >
-                      {item.respondentCount} respondents —{" "}
-                      {formatMoney(item.priceCents)}
+                  {configuration.respondentCounts.map((count) => (
+                    <option key={count} value={count}>
+                      {count} respondents — {formatCredits(count)}
                     </option>
                   ))}
                 </Select>
@@ -749,39 +739,38 @@ function TestWizardForm({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border p-4">
                 <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <WalletCards className="size-4" /> Available balance
+                  <WalletCards className="size-4" /> Available credits
                 </div>
                 <p className="mt-2 text-2xl font-semibold">
-                  {formatMoney(currentUser.balanceCents)}
+                  {formatCredits(currentUser.creditBalance)}
                 </p>
               </div>
               <div className="rounded-lg border p-4">
                 <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Sparkles className="size-4" /> Test price
+                  <Sparkles className="size-4" /> Test cost
                 </div>
                 <p className="mt-2 text-2xl font-semibold">
-                  {priceCents !== undefined ? formatMoney(priceCents) : "—"}
+                  {formatCredits(creditCost)}
                 </p>
               </div>
             </div>
-            {priceCents !== undefined &&
-              currentUser.balanceCents < priceCents && (
-                <div className="rounded-lg border border-[var(--amber)]/25 bg-[var(--amber-soft)] p-4 text-sm">
-                  <p className="font-medium">
-                    Your balance is too low to launch this test.
-                  </p>
-                  <Link
-                    href="/app/billing"
-                    className="mt-1 inline-flex text-[var(--amber)] underline underline-offset-2"
-                  >
-                    Add funds to continue
-                  </Link>
-                </div>
-              )}
+            {currentUser.creditBalance < creditCost && (
+              <div className="rounded-lg border border-[var(--amber)]/25 bg-[var(--amber-soft)] p-4 text-sm">
+                <p className="font-medium">
+                  You do not have enough credits to launch this test.
+                </p>
+                <Link
+                  href="/app/billing"
+                  className="mt-1 inline-flex text-[var(--amber)] underline underline-offset-2"
+                >
+                  Get credits to continue
+                </Link>
+              </div>
+            )}
             <div className="bg-muted text-muted-foreground flex items-start gap-2 rounded-lg p-3 text-xs leading-5">
               <Check className="mt-0.5 size-4 shrink-0 text-[var(--green)]" />{" "}
-              Price, respondent count, question, options, audience, context, and
-              model routing are frozen when execution starts.
+              Credit cost, respondent count, question, options, audience,
+              context, and model routing are frozen when execution starts.
             </div>
           </div>
         )}
@@ -812,15 +801,11 @@ function TestWizardForm({
             size="lg"
             onClick={() => void launch()}
             disabled={
-              saving ||
-              !complete ||
-              priceCents === undefined ||
-              currentUser.balanceCents < priceCents
+              saving || !complete || currentUser.creditBalance < creditCost
             }
           >
             {saving ? <Loader2 className="animate-spin" /> : <Sparkles />}{" "}
-            Launch for{" "}
-            {priceCents !== undefined ? formatMoney(priceCents) : "—"}
+            Launch for {formatCredits(creditCost)}
           </Button>
         )}
       </div>

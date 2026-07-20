@@ -28,7 +28,12 @@ type Env = {
   readonly APP_URL: string | undefined;
   readonly CREEM_API_BASE_URL: string | undefined;
   readonly CREEM_API_KEY: string | undefined;
-  readonly CREEM_PRODUCT_ID: string | undefined;
+  readonly CREEM_PRODUCT_ID_10: string | undefined;
+  readonly CREEM_PRODUCT_ID_100: string | undefined;
+  readonly CREEM_PRODUCT_ID_200: string | undefined;
+  readonly CREEM_PRODUCT_ID_25: string | undefined;
+  readonly CREEM_PRODUCT_ID_400: string | undefined;
+  readonly CREEM_PRODUCT_ID_50: string | undefined;
   readonly CREEM_WEBHOOK_SECRET: string | undefined;
   readonly OPENCODE_GO_API_KEY: string | undefined;
   readonly OPENROUTER_API_KEY: string | undefined;

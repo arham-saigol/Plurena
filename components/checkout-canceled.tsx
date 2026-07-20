@@ -29,8 +29,8 @@ export function CheckoutCanceled() {
             Checkout canceled
           </h1>
           <p className="text-muted-foreground mt-2 max-w-sm text-sm leading-6">
-            No funds were added and your existing balance was not changed. You
-            can start another checkout whenever you are ready.
+            No credits were added and your existing credit balance was not
+            changed. You can start another checkout whenever you are ready.
           </p>
           <div className="mt-7 flex gap-2">
             <Button asChild variant="outline">

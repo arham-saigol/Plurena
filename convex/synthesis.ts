@@ -6,7 +6,10 @@ import {
   internalQuery,
   type MutationCtx,
 } from "./_generated/server";
-import { aggregateResponses, calculateFailureRefund } from "./lib/aggregation";
+import {
+  aggregateResponses,
+  calculateFailureCreditRefund,
+} from "./lib/aggregation";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { ROUTED_GENERATION_LEASE_MS } from "./lib/models";
 import { modelKeyValidator, providerValidator } from "./lib/validators";
@@ -43,36 +46,36 @@ const narrativeValidator = v.object({
 async function applyRefund(
   ctx: MutationCtx,
   test: Doc<"tests">,
-  refundCents: number,
+  refundedCredits: number,
 ) {
-  if (refundCents <= 0) return 0;
+  if (refundedCredits <= 0) return 0;
   const externalKey = `test:${test._id}:refund`;
   const existing = await ctx.db
     .query("ledgerEntries")
     .withIndex("by_externalKey", (q) => q.eq("externalKey", externalKey))
     .unique();
-  if (existing) return existing.amountCents;
+  if (existing) return existing.amountCredits;
   const user = await ctx.db.get("users", test.ownerId);
   if (!user) return 0;
-  const resultingBalanceCents = user.balanceCents + refundCents;
+  const resultingCreditBalance = user.creditBalance + refundedCredits;
   await ctx.db.patch("users", user._id, {
-    balanceCents: resultingBalanceCents,
+    creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
   await ctx.db.insert("ledgerEntries", {
     ownerId: user._id,
     type: "test_refund",
-    amountCents: refundCents,
-    resultingBalanceCents,
+    amountCredits: refundedCredits,
+    resultingCreditBalance,
     reason:
-      refundCents === test.priceCents
+      refundedCredits === test.creditCost
         ? "Automatic refund: no usable respondent results"
-        : "Automatic proportional refund for failed respondents",
+        : "Automatic refund for failed respondents",
     externalKey,
     testId: test._id,
     createdAt: Date.now(),
   });
-  return refundCents;
+  return refundedCredits;
 }
 
 function readableReport(
@@ -204,7 +207,11 @@ export const start = internalMutation({
       .unique();
     if (!progress) throw new Error("Test progress not found");
     if (responses.length === 0) {
-      const refundCents = await applyRefund(ctx, test, test.priceCents ?? 0);
+      const refundedCredits = await applyRefund(
+        ctx,
+        test,
+        test.creditCost ?? 0,
+      );
       const now = Date.now();
       await syncDashboardStatsForTest(ctx, test, "failed");
       await ctx.db.patch("tests", test._id, {
@@ -214,7 +221,7 @@ export const start = internalMutation({
       });
       await ctx.db.patch("testProgress", progress._id, {
         status: "failed",
-        phaseLabel: `No usable responses — ${refundCents > 0 ? "charge refunded" : "test failed"}`,
+        phaseLabel: `No usable responses — ${refundedCredits > 0 ? "credits refunded" : "test failed"}`,
         updatedAt: now,
       });
       return null;
@@ -487,12 +494,12 @@ export const finalize = internalMutation({
       .unique();
     if (!progress) throw new Error("Test progress not found");
     const aggregate = aggregateResponses(options, responses);
-    const refundCents = calculateFailureRefund(
-      snapshot.chargedPriceCents,
+    const refundedCredits = calculateFailureCreditRefund(
+      snapshot.chargedCredits,
       responses.length,
       progress.failedRespondents,
     );
-    const appliedRefund = await applyRefund(ctx, test, refundCents);
+    const appliedRefund = await applyRefund(ctx, test, refundedCredits);
     const insightByPosition = new Map(
       args.narrative.optionInsights.map((insight) => [
         insight.optionPosition,
@@ -548,7 +555,7 @@ export const finalize = internalMutation({
       }),
       successfulResponses: responses.length,
       failedResponses: progress.failedRespondents,
-      refundCents: appliedRefund,
+      refundedCredits: appliedRefund,
       modelKey: args.modelKey,
       provider: args.provider,
       createdAt: now,

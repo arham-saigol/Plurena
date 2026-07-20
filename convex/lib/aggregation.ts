@@ -76,13 +76,12 @@ export function aggregateResponses(
   };
 }
 
-export function calculateFailureRefund(
-  chargedCents: number,
+export function calculateFailureCreditRefund(
+  chargedCredits: number,
   successful: number,
   failed: number,
 ) {
-  const total = successful + failed;
-  if (total === 0 || failed === 0) return 0;
-  if (successful === 0) return chargedCents;
-  return Math.floor((chargedCents * failed) / total);
+  if (failed === 0) return 0;
+  if (successful === 0) return chargedCredits;
+  return Math.min(chargedCredits, failed);
 }
