@@ -90,6 +90,7 @@ export const prepareCheckout = internalMutation({
       credits: option.credits,
       status: "creating",
       refundedAmountCents: 0,
+      knownRefundedAmountCents: 0,
       reversedCredits: 0,
       createdAt: now,
       updatedAt: now,
@@ -357,13 +358,15 @@ export const processPaymentReversal = internalMutation({
       return { duplicate: false, reversedCredits: 0 };
     }
 
+    const knownRefundedAmountCents = isRefund
+      ? session.knownRefundedAmountCents + args.amountCents
+      : session.knownRefundedAmountCents;
     const cumulativeRefundedAmountCents = isRefund
-      ? args.cumulativeRefundedAmountCents === undefined
-        ? session.refundedAmountCents + args.amountCents
-        : Math.max(
-            session.refundedAmountCents,
-            args.cumulativeRefundedAmountCents,
-          )
+      ? Math.max(
+          session.refundedAmountCents,
+          knownRefundedAmountCents,
+          args.cumulativeRefundedAmountCents ?? 0,
+        )
       : session.refundedAmountCents;
     const proportionalCredits = Math.ceil(
       (session.credits *
@@ -414,6 +417,7 @@ export const processPaymentReversal = internalMutation({
             : "partially_refunded"
         : "disputed",
       refundedAmountCents: cumulativeRefundedAmountCents,
+      knownRefundedAmountCents,
       reversedCredits,
       errorMessage: isRefund
         ? "Payment refunded; the corresponding credits were reversed"

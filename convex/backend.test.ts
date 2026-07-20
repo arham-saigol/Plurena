@@ -522,7 +522,7 @@ describe("authenticated financial invariants", () => {
       reversalId: "refund_123",
       orderId: "order_123",
       transactionId: "txn_123",
-      amountCents: 2_399,
+      amountCents: 1,
       transactionAmountPaidCents: 2_400,
       cumulativeRefundedAmountCents: 2_399,
       paymentStatus: "succeeded",
@@ -562,26 +562,25 @@ describe("authenticated financial invariants", () => {
       credits: 130,
       errorMessage: "Payment refunded; the corresponding credits were reversed",
     });
+    const olderRefund = {
+      eventId: "evt_older_refund",
+      eventType: refund.eventType,
+      payloadHash: "older-refund-hash",
+      reversalId: "refund_older",
+      orderId: refund.orderId,
+      transactionId: refund.transactionId,
+      amountCents: 2_398,
+      transactionAmountPaidCents: refund.transactionAmountPaidCents,
+      paymentStatus: refund.paymentStatus,
+    };
     expect(
-      await t.mutation(internal.payments.processPaymentReversal, {
-        ...refund,
-        eventId: "evt_older_refund",
-        payloadHash: "older-refund-hash",
-        reversalId: "refund_older",
-        cumulativeRefundedAmountCents: 600,
-      }),
+      await t.mutation(internal.payments.processPaymentReversal, olderRefund),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect(
       await t.mutation(internal.payments.processPaymentReversal, {
+        ...olderRefund,
         eventId: "evt_older_refund_redelivery",
-        eventType: refund.eventType,
         payloadHash: "older-refund-redelivery-hash",
-        reversalId: "refund_older",
-        orderId: refund.orderId,
-        transactionId: refund.transactionId,
-        amountCents: refund.amountCents,
-        transactionAmountPaidCents: refund.transactionAmountPaidCents,
-        paymentStatus: refund.paymentStatus,
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect((await alice.query(api.users.current)).creditBalance).toBe(25);

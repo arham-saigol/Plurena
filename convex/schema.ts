@@ -336,6 +336,7 @@ export default defineSchema({
     transactionId: v.optional(v.string()),
     checkoutUrl: v.optional(v.string()),
     refundedAmountCents: v.number(),
+    knownRefundedAmountCents: v.number(),
     reversedCredits: v.number(),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
