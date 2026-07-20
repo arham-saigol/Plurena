@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { CircleDollarSign, FlaskConical, Plus, Sparkles } from "lucide-react";
-import { useEffect } from "react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { TestList } from "@/components/test-list";
@@ -17,18 +16,15 @@ export function Dashboard({ all = false }: { all?: boolean }) {
     results: tests,
     status,
     loadMore,
-  } = usePaginatedQuery(api.tests.dashboard, {}, { initialNumItems: 50 });
+  } = usePaginatedQuery(
+    api.tests.dashboard,
+    {},
+    { initialNumItems: all ? 50 : 8 },
+  );
   const user = useQuery(api.users.current);
+  const summary = useQuery(api.tests.dashboardSummary, all ? "skip" : {});
 
-  useEffect(() => {
-    if (!all && status === "CanLoadMore") loadMore(50);
-  }, [all, loadMore, status]);
-
-  if (
-    !user ||
-    status === "LoadingFirstPage" ||
-    (!all && status !== "Exhausted")
-  ) {
+  if (!user || status === "LoadingFirstPage") {
     return (
       <div className="space-y-5">
         <Skeleton className="h-10 w-60" />
@@ -41,14 +37,8 @@ export function Dashboard({ all = false }: { all?: boolean }) {
       </div>
     );
   }
-  const completed = tests.filter((test) =>
-    ["completed", "partially_failed"].includes(test.status),
-  ).length;
-  const active = tests.filter((test) =>
-    ["preparing_personas", "running_respondents", "synthesizing"].includes(
-      test.status,
-    ),
-  ).length;
+  const completed = summary?.completed;
+  const active = summary?.active;
   const visible = all ? tests : tests.slice(0, 8);
 
   return (
@@ -82,13 +72,13 @@ export function Dashboard({ all = false }: { all?: boolean }) {
             },
             {
               label: "Active tests",
-              value: String(active),
+              value: active === undefined ? "…" : String(active),
               icon: FlaskConical,
               href: "/app/tests",
             },
             {
               label: "Reports ready",
-              value: String(completed),
+              value: completed === undefined ? "…" : String(completed),
               icon: Sparkles,
               href: "/app/tests",
             },
@@ -114,7 +104,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
           <h2 className="text-sm font-semibold">
             {all ? "Tests" : "Recent tests"}
           </h2>
-          {!all && tests.length > visible.length && (
+          {!all && status !== "Exhausted" && (
             <Link
               href="/app/tests"
               className="text-muted-foreground hover:text-foreground text-xs"

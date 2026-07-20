@@ -10,7 +10,10 @@ import {
   RoutedGenerationError,
   type ProviderAttempt,
 } from "./lib/ai";
-import { classifyProviderError } from "./lib/models";
+import {
+  classifyProviderError,
+  ModelOutputValidationError,
+} from "./lib/models";
 import {
   finalNarrativeSchema,
   groupSummarySchema,
@@ -173,7 +176,9 @@ export const finalizeReport = internalAction({
           (insight) => !positions.has(insight.optionPosition),
         )
       ) {
-        throw new Error("Final synthesis did not cover every option");
+        throw new ModelOutputValidationError(
+          "Final synthesis did not cover every option",
+        );
       }
       await recordAttempts(ctx, {
         testId: payload.test._id,

@@ -173,6 +173,10 @@ describe("authenticated financial invariants", () => {
     expect(firstPage.isDone).toBe(false);
     expect(secondPage.page).toHaveLength(1);
     expect(secondPage.isDone).toBe(true);
+    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
+      active: 0,
+      completed: 51,
+    });
   });
 
   it("deletes draft image assets only after their last reference", async () => {
