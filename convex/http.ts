@@ -9,17 +9,15 @@ import { env, httpAction } from "./_generated/server";
 
 const entityReferenceSchema = z.union([
   z.string(),
-  z.object({ id: z.string() }).passthrough(),
+  z.looseObject({ id: z.string() }),
 ]);
 
 const productSchema = z.union([
   z.string(),
-  z
-    .object({
-      id: z.string(),
-      price: z.number().int().positive().optional(),
-    })
-    .passthrough(),
+  z.looseObject({
+    id: z.string(),
+    price: z.number().int().positive().optional(),
+  }),
 ]);
 
 const checkoutSchema = z.object({
@@ -38,16 +36,14 @@ const checkoutSchema = z.object({
   }),
 });
 
-const transactionSchema = z
-  .object({
-    id: z.string(),
-    amount: z.number().int().positive(),
-    amount_paid: z.number().int().positive().nullish(),
-    refunded_amount: z.number().int().nonnegative().nullish(),
-    status: z.string(),
-    order: z.string().nullish(),
-  })
-  .passthrough();
+const transactionSchema = z.looseObject({
+  id: z.string(),
+  amount: z.number().int().positive(),
+  amount_paid: z.number().int().positive().nullish(),
+  refunded_amount: z.number().int().nonnegative().nullish(),
+  status: z.string(),
+  order: z.string().nullish(),
+});
 
 const refundSchema = z.object({
   id: z.string(),

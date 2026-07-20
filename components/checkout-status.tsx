@@ -38,23 +38,21 @@ export function CheckoutStatus() {
       />
     );
   }
-  if (
-    checkout.status === "completed" ||
-    checkout.status === "partially_refunded"
-  ) {
+  if (checkout.status === "completed") {
     return (
       <StatusContent
         icon={<CheckCircle2 className="text-emerald-500" />}
-        title={
-          checkout.status === "partially_refunded"
-            ? "Purchase partially refunded"
-            : `${formatCredits(checkout.credits)} added`
-        }
-        description={
-          checkout.status === "partially_refunded"
-            ? "This purchase was partially refunded, so the corresponding credits were reversed."
-            : "Your payment is confirmed and the credits are ready to use."
-        }
+        title={`${formatCredits(checkout.credits)} added`}
+        description="Your payment is confirmed and the credits are ready to use."
+      />
+    );
+  }
+  if (checkout.status === "partially_refunded") {
+    return (
+      <StatusContent
+        icon={<CircleAlert className="text-[var(--amber)]" />}
+        title="Purchase partially refunded"
+        description="This purchase was partially refunded, so the corresponding credits were reversed."
       />
     );
   }

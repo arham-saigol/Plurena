@@ -48,7 +48,7 @@ async function applyRefund(
   test: Doc<"tests">,
   refundedCredits: number,
 ) {
-  if (refundedCredits <= 0) return 0;
+  if (!Number.isFinite(refundedCredits) || refundedCredits <= 0) return 0;
   const externalKey = `test:${test._id}:refund`;
   const existing = await ctx.db
     .query("ledgerEntries")

@@ -211,6 +211,11 @@ export const processCheckoutWebhook = internalMutation({
       .query("ledgerEntries")
       .withIndex("by_externalKey", (q) => q.eq("externalKey", externalKey))
       .unique();
+    const hasReversal =
+      existingCredit !== null &&
+      (session.status === "partially_refunded" ||
+        session.status === "refunded" ||
+        session.status === "disputed");
     if (!existingCredit) {
       const user = await ctx.db.get("users", session.ownerId);
       if (!user) throw new Error("Checkout owner no longer exists");
@@ -231,10 +236,10 @@ export const processCheckoutWebhook = internalMutation({
       });
     }
     await ctx.db.patch("checkoutSessions", session._id, {
-      status: "completed",
+      status: hasReversal ? session.status : "completed",
       orderId: args.orderId,
       transactionId: args.transactionId,
-      errorMessage: undefined,
+      errorMessage: hasReversal ? session.errorMessage : undefined,
       updatedAt: now,
     });
     await ctx.db.insert("webhookEvents", {
@@ -356,10 +361,12 @@ export const processPaymentReversal = internalMutation({
     }
 
     const cumulativeRefundedAmountCents = isRefund
-      ? Math.max(
-          session.refundedAmountCents + args.amountCents,
-          args.cumulativeRefundedAmountCents ?? 0,
-        )
+      ? args.cumulativeRefundedAmountCents === undefined
+        ? session.refundedAmountCents + args.amountCents
+        : Math.max(
+            session.refundedAmountCents,
+            args.cumulativeRefundedAmountCents,
+          )
       : session.refundedAmountCents;
     const proportionalCredits = Math.ceil(
       (session.credits *

@@ -519,7 +519,7 @@ describe("authenticated financial invariants", () => {
       reversalId: "refund_123",
       orderId: "order_123",
       transactionId: "txn_123",
-      amountCents: 1_250,
+      amountCents: 625,
       transactionAmountPaidCents: 2_500,
       cumulativeRefundedAmountCents: 1_250,
       paymentStatus: "succeeded",
@@ -538,6 +538,45 @@ describe("authenticated financial invariants", () => {
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect((await alice.query(api.users.current)).creditBalance).toBe(92);
+    expect(
+      await alice.query(api.payments.checkoutStatus, { requestId }),
+    ).toEqual({
+      status: "partially_refunded",
+      credits: 135,
+      errorMessage: "Payment refunded; the corresponding credits were reversed",
+    });
+    expect(
+      await t.mutation(internal.payments.processCheckoutWebhook, {
+        ...webhook,
+        eventId: "evt_after_refund_redelivery",
+        payloadHash: "after-refund-redelivery-hash",
+      }),
+    ).toEqual({ duplicate: false, credited: false });
+    expect(
+      await alice.query(api.payments.checkoutStatus, { requestId }),
+    ).toEqual({
+      status: "partially_refunded",
+      credits: 135,
+      errorMessage: "Payment refunded; the corresponding credits were reversed",
+    });
+    expect(
+      await t.mutation(internal.payments.processPaymentReversal, {
+        ...refund,
+        eventId: "evt_older_refund",
+        payloadHash: "older-refund-hash",
+        reversalId: "refund_older",
+        cumulativeRefundedAmountCents: 625,
+      }),
+    ).toEqual({ duplicate: false, reversedCredits: 0 });
+    expect((await alice.query(api.users.current)).creditBalance).toBe(92);
+    expect(
+      await t.run(async (ctx) =>
+        ctx.db
+          .query("checkoutSessions")
+          .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+          .unique(),
+      ),
+    ).toMatchObject({ refundedAmountCents: 1_250, reversedCredits: 68 });
 
     const dispute = {
       eventId: "evt_dispute_123",

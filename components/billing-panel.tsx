@@ -30,12 +30,10 @@ export function BillingPanel() {
   const options = useQuery(api.payments.purchaseOptions);
   const ledger = useQuery(api.users.ledger, { limit: 50 });
   const createCheckout = useAction(api.paymentActions.createCheckout);
-  const [selectedOptionKey, setSelectedOptionKey] =
-    useState<CreditOptionKey>("credits_275");
+  const [selectedOptionKey, setSelectedOptionKey] = useState<CreditOptionKey>();
   const [submitting, setSubmitting] = useState(false);
-  const selectedOption = options?.find(
-    (option) => option.key === selectedOptionKey,
-  );
+  const selectedOption =
+    options?.find((option) => option.key === selectedOptionKey) ?? options?.[0];
 
   const startCheckout = async () => {
     if (!selectedOption) return;
@@ -97,7 +95,7 @@ export function BillingPanel() {
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {options.map((option, index) => {
-                  const selected = selectedOptionKey === option.key;
+                  const selected = selectedOption?.key === option.key;
                   const highestBonus = index === options.length - 1;
                   return (
                     <button
