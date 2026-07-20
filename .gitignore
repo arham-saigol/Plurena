@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+
+# convex
+.convex/
+
+# local configuration
+.env
+.env.local
+.env.*.local
+
+# tests and tooling
+coverage/
+*.tsbuildinfo
+
+# operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# logs
+*.log
+npm-debug.log*
