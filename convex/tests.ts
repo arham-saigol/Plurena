@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
 import { MODEL_CATALOG, MODEL_KEYS } from "./lib/models";
 import { getPriceCents, RESPONDENT_COUNTS } from "./lib/pricing";
@@ -12,6 +13,24 @@ import {
 } from "./lib/validators";
 
 const MAX_OPTIONS = 8;
+
+async function removeAssetIfUnused(
+  ctx: MutationCtx,
+  ownerId: Id<"users">,
+  assetId: Id<"uploadedAssets">,
+) {
+  const asset = await ctx.db.get("uploadedAssets", assetId);
+  if (!asset || asset.ownerId !== ownerId) return;
+  const inUse = await ctx.db
+    .query("testOptions")
+    .withIndex("by_ownerId_and_storageId", (q) =>
+      q.eq("ownerId", ownerId).eq("storageId", asset.storageId),
+    )
+    .first();
+  if (inUse) return;
+  await ctx.storage.delete(asset.storageId);
+  await ctx.db.delete("uploadedAssets", asset._id);
+}
 
 function cleanRequired(value: string, label: string, maxLength: number) {
   const cleaned = value.trim();
@@ -87,6 +106,7 @@ export const saveDraft = mutation({
     }
 
     const now = Date.now();
+    const replacedAssetIds = new Set<Id<"uploadedAssets">>();
     let testId = args.testId;
     if (testId) {
       const test = await ctx.db.get("tests", testId);
@@ -118,6 +138,7 @@ export const saveDraft = mutation({
         .withIndex("by_testId_and_position", (q) => q.eq("testId", testId!))
         .take(MAX_OPTIONS + 1);
       for (const option of existingOptions) {
+        if (option.assetId) replacedAssetIds.add(option.assetId);
         await ctx.db.delete("testOptions", option._id);
       }
     } else {
@@ -178,6 +199,9 @@ export const saveDraft = mutation({
           createdAt: now,
         });
       }
+    }
+    for (const assetId of replacedAssetIds) {
+      await removeAssetIfUnused(ctx, user._id, assetId);
     }
     return testId;
   },
@@ -311,17 +335,7 @@ export const removeDraft = mutation({
       await ctx.db.delete("testOptions", option._id);
     }
     for (const assetId of assetIds) {
-      const asset = await ctx.db.get("uploadedAssets", assetId);
-      if (!asset || asset.ownerId !== test.ownerId) continue;
-      const stillInUse = await ctx.db
-        .query("testOptions")
-        .withIndex("by_ownerId_and_storageId", (q) =>
-          q.eq("ownerId", test.ownerId).eq("storageId", asset.storageId),
-        )
-        .first();
-      if (stillInUse) continue;
-      await ctx.storage.delete(asset.storageId);
-      await ctx.db.delete("uploadedAssets", asset._id);
+      await removeAssetIfUnused(ctx, test.ownerId, assetId);
     }
     const progress = await ctx.db
       .query("testProgress")

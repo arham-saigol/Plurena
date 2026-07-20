@@ -198,6 +198,98 @@ describe("authenticated financial invariants", () => {
     expect(afterLastDelete.hasSharedBlob).toBe(false);
   });
 
+  it("reclaims superseded, orphaned, and unfinalized image uploads", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(aliceIdentity);
+    await alice.mutation(api.users.syncCurrentUser, {});
+    const uploads = await t.run(async (ctx) => {
+      const user = await ctx.db.query("users").first();
+      if (!user) throw new Error("Expected Alice's user record");
+      const createAsset = async (filename: string) => {
+        const storageId = await ctx.storage.store(
+          new Blob([filename], { type: "image/png" }),
+        );
+        const assetId = await ctx.db.insert("uploadedAssets", {
+          ownerId: user._id,
+          storageId,
+          filename,
+          contentType: "image/png",
+          sizeBytes: filename.length,
+          createdAt: Date.now(),
+        });
+        return { assetId, storageId };
+      };
+      return {
+        oldA: await createAsset("old-a.png"),
+        oldB: await createAsset("old-b.png"),
+        replacementA: await createAsset("replacement-a.png"),
+        replacementB: await createAsset("replacement-b.png"),
+        orphan: await createAsset("orphan.png"),
+        unfinalizedStorageId: await ctx.storage.store(
+          new Blob(["unfinalized"], { type: "image/png" }),
+        ),
+      };
+    });
+    const imageDraft = {
+      ...draft,
+      optionType: "image" as const,
+      respondentModel: "minimax_m3" as const,
+    };
+    const testId = await alice.mutation(api.tests.saveDraft, {
+      ...imageDraft,
+      options: [
+        { kind: "image", label: "Old A", assetId: uploads.oldA.assetId },
+        { kind: "image", label: "Old B", assetId: uploads.oldB.assetId },
+      ],
+    });
+
+    await alice.mutation(api.tests.saveDraft, {
+      ...imageDraft,
+      testId,
+      options: [
+        {
+          kind: "image",
+          label: "Replacement A",
+          assetId: uploads.replacementA.assetId,
+        },
+        {
+          kind: "image",
+          label: "Replacement B",
+          assetId: uploads.replacementB.assetId,
+        },
+      ],
+    });
+    await t.mutation(internal.uploads.reclaimAbandonedUploads, {
+      cutoff: Date.now() + 60_000,
+    });
+
+    const result = await t.run(async (ctx) => ({
+      oldA: await ctx.db.get("uploadedAssets", uploads.oldA.assetId),
+      hasOldABlob: (await ctx.storage.get(uploads.oldA.storageId)) !== null,
+      oldB: await ctx.db.get("uploadedAssets", uploads.oldB.assetId),
+      hasOldBBlob: (await ctx.storage.get(uploads.oldB.storageId)) !== null,
+      replacementA: await ctx.db.get(
+        "uploadedAssets",
+        uploads.replacementA.assetId,
+      ),
+      hasReplacementABlob:
+        (await ctx.storage.get(uploads.replacementA.storageId)) !== null,
+      orphan: await ctx.db.get("uploadedAssets", uploads.orphan.assetId),
+      hasOrphanBlob: (await ctx.storage.get(uploads.orphan.storageId)) !== null,
+      hasUnfinalizedBlob:
+        (await ctx.storage.get(uploads.unfinalizedStorageId)) !== null,
+    }));
+    expect(result.oldA).toBeNull();
+    expect(result.hasOldABlob).toBe(false);
+    expect(result.oldB).toBeNull();
+    expect(result.hasOldBBlob).toBe(false);
+    expect(result.replacementA).not.toBeNull();
+    expect(result.hasReplacementABlob).toBe(true);
+    expect(result.orphan).toBeNull();
+    expect(result.hasOrphanBlob).toBe(false);
+    expect(result.hasUnfinalizedBlob).toBe(false);
+  });
+
   it("credits a verified checkout exactly once across duplicate webhooks", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);

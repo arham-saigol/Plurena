@@ -1,9 +1,12 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const ABANDONED_UPLOAD_GRACE_MS = 60 * 60 * 1_000;
+const CLEANUP_BATCH_SIZE = 50;
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -61,6 +64,51 @@ export const removeUpload = mutation({
     if (inUse) throw new Error("This image is used by a saved draft");
     await ctx.storage.delete(asset.storageId);
     await ctx.db.delete("uploadedAssets", asset._id);
+    return null;
+  },
+});
+
+export const reclaimAbandonedUploads = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    cutoff: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.cutoff ?? Date.now() - ABANDONED_UPLOAD_GRACE_MS;
+    const page = await ctx.db.system
+      .query("_storage")
+      .order("asc")
+      .paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_BATCH_SIZE });
+
+    for (const storedFile of page.page) {
+      if (storedFile._creationTime >= cutoff) return null;
+      const asset = await ctx.db
+        .query("uploadedAssets")
+        .withIndex("by_storageId", (q) => q.eq("storageId", storedFile._id))
+        .first();
+      if (asset) {
+        const inUse = await ctx.db
+          .query("testOptions")
+          .withIndex("by_ownerId_and_storageId", (q) =>
+            q.eq("ownerId", asset.ownerId).eq("storageId", asset.storageId),
+          )
+          .first();
+        if (inUse) continue;
+        await ctx.db.delete("uploadedAssets", asset._id);
+      }
+      await ctx.storage.delete(storedFile._id);
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.uploads.reclaimAbandonedUploads,
+        {
+          cursor: page.continueCursor,
+          cutoff,
+        },
+      );
+    }
     return null;
   },
 });

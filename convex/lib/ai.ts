@@ -8,6 +8,7 @@ import { env } from "../_generated/server";
 import {
   classifyProviderError,
   getModelRoutes,
+  ROUTED_GENERATION_DEADLINE_MS,
   MODEL_ROUTE_TIMEOUT_MS,
   type ModelKey,
   type ProviderErrorClass,
@@ -104,10 +105,22 @@ export async function generateStructured<T>({
 }) {
   const attempts: Array<ProviderAttempt> = [];
   const routes = getModelRoutes(requestedModel, requiresVision);
+  const deadlineAt = Date.now() + ROUTED_GENERATION_DEADLINE_MS;
   let lastError: unknown;
 
   for (const route of routes) {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 0) {
+      lastError = new DOMException(
+        "Routed generation deadline exceeded",
+        "TimeoutError",
+      );
+      break;
+    }
     const startedAt = Date.now();
+    const abortSignal = AbortSignal.timeout(
+      Math.min(MODEL_ROUTE_TIMEOUT_MS, remainingMs),
+    );
     try {
       const model = providerModel(route);
       const output = Output.object({ schema });
@@ -120,7 +133,7 @@ export async function generateStructured<T>({
             maxOutputTokens,
             temperature: 0.35,
             maxRetries: 1,
-            abortSignal: AbortSignal.timeout(MODEL_ROUTE_TIMEOUT_MS),
+            abortSignal,
           })
         : await generateText({
             model,
@@ -130,7 +143,7 @@ export async function generateStructured<T>({
             maxOutputTokens,
             temperature: 0.35,
             maxRetries: 1,
-            abortSignal: AbortSignal.timeout(MODEL_ROUTE_TIMEOUT_MS),
+            abortSignal,
           });
       attempts.push({
         modelKey: route.modelKey,

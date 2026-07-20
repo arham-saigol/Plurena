@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { aggregateResponses, calculateFailureRefund } from "./aggregation";
-import { classifyProviderError, getModelRoutes, MODEL_KEYS } from "./models";
+import {
+  classifyProviderError,
+  getModelRoutes,
+  MODEL_KEYS,
+  ROUTED_GENERATION_DEADLINE_MS,
+  ROUTED_GENERATION_LEASE_MS,
+} from "./models";
 import { getPriceCents, RESPONDENT_COUNTS } from "./pricing";
 import {
   finalNarrativeSchema,
@@ -95,6 +101,14 @@ describe("model routing policy", () => {
       ),
     ).toBe(true);
     expect(MODEL_KEYS).toHaveLength(10);
+  });
+
+  it("keeps routed generation and its lease below the action limit", () => {
+    expect(ROUTED_GENERATION_DEADLINE_MS).toBeLessThan(10 * 60_000);
+    expect(ROUTED_GENERATION_LEASE_MS).toBeLessThan(10 * 60_000);
+    expect(ROUTED_GENERATION_LEASE_MS).toBeGreaterThan(
+      ROUTED_GENERATION_DEADLINE_MS,
+    );
   });
 
   it("retries transient failures but stops on credential and input failures", () => {
