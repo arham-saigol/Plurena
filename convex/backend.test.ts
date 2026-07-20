@@ -522,14 +522,14 @@ describe("authenticated financial invariants", () => {
       reversalId: "refund_123",
       orderId: "order_123",
       transactionId: "txn_123",
-      amountCents: 600,
+      amountCents: 2_399,
       transactionAmountPaidCents: 2_400,
-      cumulativeRefundedAmountCents: 1_200,
+      cumulativeRefundedAmountCents: 2_399,
       paymentStatus: "succeeded",
     };
     expect(
       await t.mutation(internal.payments.processPaymentReversal, refund),
-    ).toEqual({ duplicate: false, reversedCredits: 65 });
+    ).toEqual({ duplicate: false, reversedCredits: 130 });
     expect(
       await t.mutation(internal.payments.processPaymentReversal, refund),
     ).toEqual({ duplicate: true, reversedCredits: 0 });
@@ -540,7 +540,7 @@ describe("authenticated financial invariants", () => {
         payloadHash: "refund-redelivery-hash",
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
-    expect((await alice.query(api.users.current)).creditBalance).toBe(90);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(
       await alice.query(api.payments.checkoutStatus, { requestId }),
     ).toEqual({
@@ -584,7 +584,7 @@ describe("authenticated financial invariants", () => {
         paymentStatus: refund.paymentStatus,
       }),
     ).toEqual({ duplicate: false, reversedCredits: 0 });
-    expect((await alice.query(api.users.current)).creditBalance).toBe(90);
+    expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(
       await t.run(async (ctx) =>
         ctx.db
@@ -592,7 +592,7 @@ describe("authenticated financial invariants", () => {
           .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
           .unique(),
       ),
-    ).toMatchObject({ refundedAmountCents: 1_200, reversedCredits: 65 });
+    ).toMatchObject({ refundedAmountCents: 2_399, reversedCredits: 130 });
 
     const dispute = {
       eventId: "evt_dispute_123",
@@ -607,7 +607,7 @@ describe("authenticated financial invariants", () => {
     };
     expect(
       await t.mutation(internal.payments.processPaymentReversal, dispute),
-    ).toEqual({ duplicate: false, reversedCredits: 65 });
+    ).toEqual({ duplicate: false, reversedCredits: 0 });
     expect(
       await t.mutation(internal.payments.processPaymentReversal, dispute),
     ).toEqual({ duplicate: true, reversedCredits: 0 });

@@ -409,7 +409,7 @@ export const processPaymentReversal = internalMutation({
       status: isRefund
         ? session.status === "disputed"
           ? "disputed"
-          : reversedCredits === session.credits
+          : cumulativeRefundedAmountCents >= args.transactionAmountPaidCents
             ? "refunded"
             : "partially_refunded"
         : "disputed",
