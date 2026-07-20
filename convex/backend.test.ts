@@ -274,14 +274,14 @@ describe("authenticated financial invariants", () => {
     expect(afterLastDelete.hasSharedBlob).toBe(false);
   });
 
-  it("reclaims released and unfinalized uploads without expiring finalized uploads", async () => {
+  it("reclaims expired and unfinalized uploads without expiring saved or active uploads", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const uploads = await t.run(async (ctx) => {
       const user = await ctx.db.query("users").first();
       if (!user) throw new Error("Expected Alice's user record");
-      const createAsset = async (filename: string) => {
+      const createAsset = async (filename: string, expiresAt?: number) => {
         const storageId = await ctx.storage.store(
           new Blob([filename], { type: "image/png" }),
         );
@@ -292,15 +292,18 @@ describe("authenticated financial invariants", () => {
           contentType: "image/png",
           sizeBytes: filename.length,
           createdAt: Date.now(),
+          ...(expiresAt === undefined ? {} : { expiresAt }),
         });
         return { assetId, storageId };
       };
+      const activeExpiration = Date.now() + 60_000;
       return {
-        oldA: await createAsset("old-a.png"),
-        oldB: await createAsset("old-b.png"),
-        replacementA: await createAsset("replacement-a.png"),
-        replacementB: await createAsset("replacement-b.png"),
-        orphan: await createAsset("orphan.png"),
+        oldA: await createAsset("old-a.png", activeExpiration),
+        oldB: await createAsset("old-b.png", activeExpiration),
+        replacementA: await createAsset("replacement-a.png", activeExpiration),
+        replacementB: await createAsset("replacement-b.png", activeExpiration),
+        expired: await createAsset("expired.png", Date.now() - 60_000),
+        active: await createAsset("active.png", activeExpiration),
         unfinalizedStorageId: await ctx.storage.store(
           new Blob(["unfinalized"], { type: "image/png" }),
         ),
@@ -335,6 +338,9 @@ describe("authenticated financial invariants", () => {
         },
       ],
     });
+    await t.mutation(internal.uploads.reclaimExpiredAssets, {
+      cutoff: Date.now(),
+    });
     await t.mutation(internal.uploads.reclaimAbandonedUploads, {
       cutoff: Date.now() + 60_000,
     });
@@ -350,8 +356,11 @@ describe("authenticated financial invariants", () => {
       ),
       hasReplacementABlob:
         (await ctx.storage.get(uploads.replacementA.storageId)) !== null,
-      orphan: await ctx.db.get("uploadedAssets", uploads.orphan.assetId),
-      hasOrphanBlob: (await ctx.storage.get(uploads.orphan.storageId)) !== null,
+      expired: await ctx.db.get("uploadedAssets", uploads.expired.assetId),
+      hasExpiredBlob:
+        (await ctx.storage.get(uploads.expired.storageId)) !== null,
+      active: await ctx.db.get("uploadedAssets", uploads.active.assetId),
+      hasActiveBlob: (await ctx.storage.get(uploads.active.storageId)) !== null,
       hasUnfinalizedBlob:
         (await ctx.storage.get(uploads.unfinalizedStorageId)) !== null,
     }));
@@ -359,21 +368,13 @@ describe("authenticated financial invariants", () => {
     expect(result.hasOldABlob).toBe(false);
     expect(result.oldB).toBeNull();
     expect(result.hasOldBBlob).toBe(false);
-    expect(result.replacementA).not.toBeNull();
+    expect(result.replacementA?.expiresAt).toBeUndefined();
     expect(result.hasReplacementABlob).toBe(true);
-    expect(result.orphan).not.toBeNull();
-    expect(result.hasOrphanBlob).toBe(true);
+    expect(result.expired).toBeNull();
+    expect(result.hasExpiredBlob).toBe(false);
+    expect(result.active).not.toBeNull();
+    expect(result.hasActiveBlob).toBe(true);
     expect(result.hasUnfinalizedBlob).toBe(false);
-
-    await alice.mutation(api.uploads.removeUpload, {
-      assetId: uploads.orphan.assetId,
-    });
-    const released = await t.run(async (ctx) => ({
-      asset: await ctx.db.get("uploadedAssets", uploads.orphan.assetId),
-      hasBlob: (await ctx.storage.get(uploads.orphan.storageId)) !== null,
-    }));
-    expect(released.asset).toBeNull();
-    expect(released.hasBlob).toBe(false);
   });
 
   it("resumes upload cleanup after its durable sweep watermark", async () => {

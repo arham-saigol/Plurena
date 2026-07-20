@@ -39,13 +39,15 @@ export const finalizeUpload = mutation({
     }
     const filename = args.filename.trim().slice(0, 180);
     if (!filename) throw new Error("Filename is required");
+    const now = Date.now();
     return await ctx.db.insert("uploadedAssets", {
       ownerId: user._id,
       storageId: args.storageId,
       filename,
       contentType: metadata.contentType,
       sizeBytes: metadata.size,
-      createdAt: Date.now(),
+      createdAt: now,
+      expiresAt: now + ABANDONED_UPLOAD_GRACE_MS,
     });
   },
 });
@@ -72,6 +74,7 @@ export const removeUpload = mutation({
 export const startReclaimAbandonedUploads = internalMutation({
   args: {},
   handler: async (ctx) => {
+    await ctx.scheduler.runAfter(0, internal.uploads.reclaimExpiredAssets, {});
     const sweep = await ctx.db
       .query("maintenanceSweeps")
       .withIndex("by_name", (q) => q.eq("name", ABANDONED_UPLOAD_SWEEP))
@@ -85,6 +88,43 @@ export const startReclaimAbandonedUploads = internalMutation({
         ? { afterCreationTime, cursor: sweep.cursor, cutoff }
         : { afterCreationTime, cutoff },
     );
+    return null;
+  },
+});
+
+export const reclaimExpiredAssets = internalMutation({
+  args: { cutoff: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const cutoff = args.cutoff ?? Date.now();
+    const assets = await ctx.db
+      .query("uploadedAssets")
+      .withIndex("by_expiresAt", (q) =>
+        q.gt("expiresAt", 0).lte("expiresAt", cutoff),
+      )
+      .take(CLEANUP_BATCH_SIZE);
+
+    for (const asset of assets) {
+      const inUse = await ctx.db
+        .query("testOptions")
+        .withIndex("by_ownerId_and_storageId", (q) =>
+          q.eq("ownerId", asset.ownerId).eq("storageId", asset.storageId),
+        )
+        .first();
+      if (inUse) {
+        await ctx.db.patch("uploadedAssets", asset._id, {
+          expiresAt: undefined,
+        });
+        continue;
+      }
+      await ctx.storage.delete(asset.storageId);
+      await ctx.db.delete("uploadedAssets", asset._id);
+    }
+
+    if (assets.length === CLEANUP_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.uploads.reclaimExpiredAssets, {
+        cutoff,
+      });
+    }
     return null;
   },
 });

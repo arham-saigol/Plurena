@@ -189,6 +189,11 @@ export const saveDraft = mutation({
         const asset = await ctx.db.get("uploadedAssets", option.assetId);
         if (!asset || asset.ownerId !== user._id)
           throw new Error("Unauthorized image");
+        if (asset.expiresAt !== undefined) {
+          await ctx.db.patch("uploadedAssets", asset._id, {
+            expiresAt: undefined,
+          });
+        }
         await ctx.db.insert("testOptions", {
           testId,
           ownerId: user._id,

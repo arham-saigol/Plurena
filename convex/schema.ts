@@ -78,9 +78,11 @@ export default defineSchema({
     contentType: v.string(),
     sizeBytes: v.number(),
     createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
   })
     .index("by_ownerId_and_createdAt", ["ownerId", "createdAt"])
-    .index("by_storageId", ["storageId"]),
+    .index("by_storageId", ["storageId"])
+    .index("by_expiresAt", ["expiresAt"]),
 
   maintenanceSweeps: defineTable({
     name: v.string(),
