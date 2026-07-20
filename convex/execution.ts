@@ -176,21 +176,31 @@ export const claimPersonaBatch = internalMutation({
       );
       return false;
     }
+    const claimToken = batch.attempts + 1;
     await ctx.db.patch("personaBatches", batch._id, {
       status: "running",
-      attempts: batch.attempts + 1,
+      attempts: claimToken,
       leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
       updatedAt: now,
     });
-    return true;
+    return claimToken;
   },
 });
 
 export const getPersonaBatchPayload = internalQuery({
-  args: { batchId: v.id("personaBatches") },
+  args: {
+    batchId: v.id("personaBatches"),
+    claimToken: v.number(),
+  },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("personaBatches", args.batchId);
-    if (!batch || batch.status !== "running") return null;
+    if (
+      !batch ||
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
+    ) {
+      return null;
+    }
     const snapshot = await ctx.db.get("testSnapshots", batch.snapshotId);
     if (!snapshot) throw new Error("Test snapshot not found");
     const existingPersonas = await ctx.db
@@ -240,16 +250,23 @@ export const recordProviderAttempts = internalMutation({
 export const completePersonaBatch = internalMutation({
   args: {
     batchId: v.id("personaBatches"),
+    claimToken: v.number(),
     personas: v.array(personaDataValidator),
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("personaBatches", args.batchId);
-    if (!batch || batch.status === "completed" || batch.status === "failed")
-      return null;
-    if (batch.status !== "running")
-      throw new Error("Persona batch is not claimed");
+    if (
+      !batch ||
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
+    ) {
+      return { status: "ignored" as const };
+    }
     if (args.personas.length !== batch.requestedCount) {
-      throw new Error("Persona batch returned the wrong number of respondents");
+      return {
+        status: "validation_failed" as const,
+        errorMessage: "Persona batch returned the wrong number of respondents",
+      };
     }
     const existing = await ctx.db
       .query("personas")
@@ -266,7 +283,10 @@ export const completePersonaBatch = internalMutation({
         fingerprints.has(persona.uniquenessFingerprint) ||
         names.has(persona.displayName.toLowerCase())
       ) {
-        throw new Error("Persona batch did not contain distinct respondents");
+        return {
+          status: "validation_failed" as const,
+          errorMessage: "Persona batch did not contain distinct respondents",
+        };
       }
       fingerprints.add(persona.uniquenessFingerprint);
       names.add(persona.displayName.toLowerCase());
@@ -327,7 +347,7 @@ export const completePersonaBatch = internalMutation({
           batchId: nextBatchId,
         },
       );
-      return null;
+      return { status: "completed" as const };
     }
 
     const allPersonas = await ctx.db
@@ -374,20 +394,26 @@ export const completePersonaBatch = internalMutation({
     await ctx.scheduler.runAfter(0, internal.execution.dispatchRespondents, {
       testId: batch.testId,
     });
-    return null;
+    return { status: "completed" as const };
   },
 });
 
 export const failPersonaBatch = internalMutation({
   args: {
     batchId: v.id("personaBatches"),
+    claimToken: v.number(),
     retryable: v.boolean(),
     errorMessage: v.string(),
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("personaBatches", args.batchId);
-    if (!batch || batch.status === "completed" || batch.status === "failed")
+    if (
+      !batch ||
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
+    ) {
       return null;
+    }
     const now = Date.now();
     if (args.retryable && batch.attempts < MAX_WORK_ATTEMPTS) {
       await ctx.db.patch("personaBatches", batch._id, {
@@ -441,15 +467,17 @@ export const dispatchRespondents = internalMutation({
         );
         continue;
       }
+      const claimToken = run.attempts + 1;
       await ctx.db.patch("respondentRuns", run._id, {
         status: "running",
-        attempts: run.attempts + 1,
+        attempts: claimToken,
         leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
         startedAt: run.startedAt ?? now,
         updatedAt: now,
       });
       await ctx.scheduler.runAfter(0, internal.executionActions.runRespondent, {
         runId: run._id,
+        claimToken,
       });
       launched += 1;
     }
@@ -490,10 +518,15 @@ export const dispatchRespondents = internalMutation({
 });
 
 export const getRespondentPayload = internalQuery({
-  args: { runId: v.id("respondentRuns") },
+  args: {
+    runId: v.id("respondentRuns"),
+    claimToken: v.number(),
+  },
   handler: async (ctx, args) => {
     const run = await ctx.db.get("respondentRuns", args.runId);
-    if (!run || run.status !== "running") return null;
+    if (!run || run.status !== "running" || run.attempts !== args.claimToken) {
+      return null;
+    }
     const snapshot = await ctx.db.get("testSnapshots", run.snapshotId);
     const persona = await ctx.db.get("personas", run.personaId);
     if (!snapshot || !persona)
@@ -511,6 +544,7 @@ export const getRespondentPayload = internalQuery({
 export const completeRespondent = internalMutation({
   args: {
     runId: v.id("respondentRuns"),
+    claimToken: v.number(),
     selectedOptionId: v.id("snapshotOptions"),
     reasons: v.array(v.string()),
     comparisons: v.array(v.string()),
@@ -529,7 +563,9 @@ export const completeRespondent = internalMutation({
       .withIndex("by_runId", (q) => q.eq("runId", run._id))
       .unique();
     if (existing || run.status === "completed") return existing?._id ?? null;
-    if (run.status !== "running") return null;
+    if (run.status !== "running" || run.attempts !== args.claimToken) {
+      return null;
+    }
     const selectedOption = await ctx.db.get(
       "snapshotOptions",
       args.selectedOptionId,
@@ -590,14 +626,16 @@ export const completeRespondent = internalMutation({
 export const failRespondent = internalMutation({
   args: {
     runId: v.id("respondentRuns"),
+    claimToken: v.number(),
     retryable: v.boolean(),
     errorClass: errorClassValidator,
     errorMessage: v.string(),
   },
   handler: async (ctx, args) => {
     const run = await ctx.db.get("respondentRuns", args.runId);
-    if (!run || run.status === "completed" || run.status === "failed")
+    if (!run || run.status !== "running" || run.attempts !== args.claimToken) {
       return null;
+    }
     const now = Date.now();
     const shouldRetry = args.retryable && run.attempts < MAX_WORK_ATTEMPTS;
     if (!shouldRetry) {

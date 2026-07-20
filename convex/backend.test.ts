@@ -451,9 +451,14 @@ describe("authenticated financial invariants", () => {
       if (!batch) throw new Error("Expected persona batch");
       return batch._id;
     });
-    await t.mutation(internal.execution.claimPersonaBatch, { batchId });
+    const personaClaim = await t.mutation(
+      internal.execution.claimPersonaBatch,
+      { batchId },
+    );
+    if (typeof personaClaim !== "number") throw new Error("Expected claim");
     await t.mutation(internal.execution.completePersonaBatch, {
       batchId,
+      claimToken: personaClaim,
       personas: personaFixtures(),
     });
     const runnable = await t.run(async (ctx) => {
@@ -468,6 +473,7 @@ describe("authenticated financial invariants", () => {
     });
     const result = {
       ...runnable,
+      claimToken: 1,
       reasons: [
         "It is clearer",
         "It is more specific",
@@ -495,6 +501,185 @@ describe("authenticated financial invariants", () => {
     }));
     expect(counts.responses).toBe(1);
     expect(counts.progress?.completedRespondents).toBe(1);
+  });
+});
+
+describe("worker fencing", () => {
+  it("retries cross-batch persona duplicates and ignores the stale attempt", async () => {
+    const { t } = await launchedTestAsAlice();
+    const fixtures = personaFixtures();
+    const batchId = await t.run(async (ctx) => {
+      const batch = await ctx.db.query("personaBatches").first();
+      if (!batch) throw new Error("Expected persona batch");
+      await ctx.db.insert("personas", {
+        testId: batch.testId,
+        snapshotId: batch.snapshotId,
+        ownerId: batch.ownerId,
+        batchId: batch._id,
+        respondentKey: "existing-respondent",
+        ...fixtures[0],
+        createdAt: Date.now(),
+      });
+      return batch._id;
+    });
+    const firstClaim = await t.mutation(internal.execution.claimPersonaBatch, {
+      batchId,
+    });
+    if (typeof firstClaim !== "number") throw new Error("Expected claim");
+
+    await expect(
+      t.mutation(internal.execution.completePersonaBatch, {
+        batchId,
+        claimToken: firstClaim,
+        personas: fixtures,
+      }),
+    ).resolves.toEqual({
+      status: "validation_failed",
+      errorMessage: "Persona batch did not contain distinct respondents",
+    });
+    await t.mutation(internal.execution.failPersonaBatch, {
+      batchId,
+      claimToken: firstClaim,
+      retryable: true,
+      errorMessage: "Persona batch did not contain distinct respondents",
+    });
+    const secondClaim = await t.mutation(internal.execution.claimPersonaBatch, {
+      batchId,
+    });
+    if (typeof secondClaim !== "number") throw new Error("Expected retry");
+
+    await t.mutation(internal.execution.completePersonaBatch, {
+      batchId,
+      claimToken: firstClaim,
+      personas: fixtures,
+    });
+    await t.mutation(internal.execution.failPersonaBatch, {
+      batchId,
+      claimToken: firstClaim,
+      retryable: false,
+      errorMessage: "Late failure",
+    });
+
+    const batch = await t.run((ctx) => ctx.db.get("personaBatches", batchId));
+    expect(batch?.status).toBe("running");
+    expect(batch?.attempts).toBe(secondClaim);
+  });
+
+  it("ignores stale respondent completions and failures", async () => {
+    const { t, testId } = await launchedTestAsAlice();
+    const batchId = await t.run(async (ctx) => {
+      const batch = await ctx.db.query("personaBatches").first();
+      if (!batch) throw new Error("Expected persona batch");
+      return batch._id;
+    });
+    const personaClaim = await t.mutation(
+      internal.execution.claimPersonaBatch,
+      { batchId },
+    );
+    if (typeof personaClaim !== "number") throw new Error("Expected claim");
+    await t.mutation(internal.execution.completePersonaBatch, {
+      batchId,
+      claimToken: personaClaim,
+      personas: personaFixtures(),
+    });
+    await t.mutation(internal.execution.dispatchRespondents, { testId });
+    const staleInput = await t.run(async (ctx) => {
+      const run = await ctx.db
+        .query("respondentRuns")
+        .withIndex("by_testId_and_status", (q) =>
+          q.eq("testId", testId).eq("status", "running"),
+        )
+        .first();
+      const option = await ctx.db.query("snapshotOptions").first();
+      if (!run || !option) throw new Error("Expected respondent work");
+      await ctx.db.patch("respondentRuns", run._id, {
+        status: "running",
+        attempts: 2,
+      });
+      return { runId: run._id, selectedOptionId: option._id };
+    });
+
+    await t.mutation(internal.execution.failRespondent, {
+      runId: staleInput.runId,
+      claimToken: 1,
+      retryable: false,
+      errorClass: "unknown",
+      errorMessage: "Late failure",
+    });
+    await t.mutation(internal.execution.completeRespondent, {
+      ...staleInput,
+      claimToken: 1,
+      reasons: ["Clear", "Specific", "Credible"],
+      comparisons: ["The alternative is weaker"],
+      confidence: "high",
+      confidenceScore: 0.9,
+      modelKey: "glm_5_2",
+      provider: "opencode_go",
+      startedAt: Date.now() - 100,
+    });
+
+    const state = await t.run(async (ctx) => ({
+      run: await ctx.db.get("respondentRuns", staleInput.runId),
+      response: await ctx.db
+        .query("responses")
+        .withIndex("by_runId", (q) => q.eq("runId", staleInput.runId))
+        .unique(),
+    }));
+    expect(state.run?.status).toBe("running");
+    expect(state.run?.attempts).toBe(2);
+    expect(state.response).toBeNull();
+  });
+
+  it("ignores stale synthesis completions and failures", async () => {
+    const { t, testId } = await launchedTestAsAlice();
+    const batchId = await t.run(async (ctx) => {
+      const test = await ctx.db.get("tests", testId);
+      if (!test?.snapshotId) throw new Error("Expected snapshot");
+      return await ctx.db.insert("synthesisBatches", {
+        testId,
+        snapshotId: test.snapshotId,
+        ownerId: test.ownerId,
+        batchNumber: 0,
+        responseIds: [],
+        status: "pending",
+        attempts: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    const firstClaim = await t.mutation(internal.synthesis.claimBatch, {
+      batchId,
+    });
+    if (typeof firstClaim !== "number") throw new Error("Expected claim");
+    await t.mutation(internal.synthesis.failBatch, {
+      batchId,
+      claimToken: firstClaim,
+      retryable: true,
+      errorMessage: "Retry",
+    });
+    const secondClaim = await t.mutation(internal.synthesis.claimBatch, {
+      batchId,
+    });
+    if (typeof secondClaim !== "number") throw new Error("Expected retry");
+
+    await t.mutation(internal.synthesis.completeBatch, {
+      batchId,
+      claimToken: firstClaim,
+      summary: "Late result",
+      themes: [],
+      objections: [],
+      segmentSignals: [],
+    });
+    await t.mutation(internal.synthesis.failBatch, {
+      batchId,
+      claimToken: firstClaim,
+      retryable: false,
+      errorMessage: "Late failure",
+    });
+
+    const batch = await t.run((ctx) => ctx.db.get("synthesisBatches", batchId));
+    expect(batch?.status).toBe("running");
+    expect(batch?.attempts).toBe(secondClaim);
   });
 });
 
@@ -544,9 +729,14 @@ describe("lease recovery", () => {
       if (!batch) throw new Error("Expected persona batch");
       return batch._id;
     });
-    await t.mutation(internal.execution.claimPersonaBatch, { batchId });
+    const personaClaim = await t.mutation(
+      internal.execution.claimPersonaBatch,
+      { batchId },
+    );
+    if (typeof personaClaim !== "number") throw new Error("Expected claim");
     await t.mutation(internal.execution.completePersonaBatch, {
       batchId,
+      claimToken: personaClaim,
       personas: personaFixtures(),
     });
     const runId = await t.run(async (ctx) => {
@@ -606,6 +796,7 @@ describe("lease recovery", () => {
     // Simulate the original worker completing after its lease was reclaimed.
     await t.mutation(internal.synthesis.completeBatch, {
       batchId: groupBatchId,
+      claimToken: 3,
       summary: "Late result",
       themes: [],
       objections: [],

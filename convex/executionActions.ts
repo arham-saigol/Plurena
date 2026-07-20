@@ -65,14 +65,14 @@ async function recordAttempts(
 export const generatePersonaBatch = internalAction({
   args: { batchId: v.id("personaBatches") },
   handler: async (ctx, args) => {
-    const claimed = await ctx.runMutation(
+    const claimToken = await ctx.runMutation(
       internal.execution.claimPersonaBatch,
       args,
     );
-    if (!claimed) return null;
+    if (!claimToken) return null;
     const payload: PersonaBatchPayload | null = await ctx.runQuery(
       internal.execution.getPersonaBatchPayload,
-      args,
+      { ...args, claimToken },
     );
     if (!payload) return null;
     const workKey = `persona-batch:${payload.batch._id}`;
@@ -120,10 +120,17 @@ export const generatePersonaBatch = internalAction({
         workKey,
         attempts,
       });
-      await ctx.runMutation(internal.execution.completePersonaBatch, {
-        batchId: payload.batch._id,
-        personas,
-      });
+      const completion = await ctx.runMutation(
+        internal.execution.completePersonaBatch,
+        {
+          batchId: payload.batch._id,
+          claimToken,
+          personas,
+        },
+      );
+      if (completion.status === "validation_failed") {
+        throw new ModelOutputValidationError(completion.errorMessage);
+      }
       return null;
     } catch (error) {
       const routed = error instanceof RoutedGenerationError ? error : undefined;
@@ -138,6 +145,7 @@ export const generatePersonaBatch = internalAction({
       const classified = routed ?? classifyProviderError(error);
       await ctx.runMutation(internal.execution.failPersonaBatch, {
         batchId: payload.batch._id,
+        claimToken,
         retryable: routed
           ? routed.retryable
           : error instanceof ModelOutputValidationError ||
@@ -151,7 +159,10 @@ export const generatePersonaBatch = internalAction({
 });
 
 export const runRespondent = internalAction({
-  args: { runId: v.id("respondentRuns") },
+  args: {
+    runId: v.id("respondentRuns"),
+    claimToken: v.number(),
+  },
   handler: async (ctx, args) => {
     const payload: RespondentPayload | null = await ctx.runQuery(
       internal.execution.getRespondentPayload,
@@ -229,6 +240,7 @@ export const runRespondent = internalAction({
       });
       await ctx.runMutation(internal.execution.completeRespondent, {
         runId: payload.run._id,
+        claimToken: args.claimToken,
         selectedOptionId: selectedOption._id,
         reasons: result.output.reasons,
         comparisons: result.output.comparisons,
@@ -253,6 +265,7 @@ export const runRespondent = internalAction({
       const classified = routed ?? classifyProviderError(error);
       await ctx.runMutation(internal.execution.failRespondent, {
         runId: payload.run._id,
+        claimToken: args.claimToken,
         retryable: routed ? routed.retryable : classified.retryable,
         errorClass: routed ? routed.classification : classified.classification,
         errorMessage:

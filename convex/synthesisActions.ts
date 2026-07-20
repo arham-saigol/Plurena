@@ -61,11 +61,14 @@ async function recordAttempts(
 export const summarizeBatch = internalAction({
   args: { batchId: v.id("synthesisBatches") },
   handler: async (ctx, args) => {
-    const claimed = await ctx.runMutation(internal.synthesis.claimBatch, args);
-    if (!claimed) return null;
+    const claimToken = await ctx.runMutation(
+      internal.synthesis.claimBatch,
+      args,
+    );
+    if (!claimToken) return null;
     const payload: SynthesisBatchPayload | null = await ctx.runQuery(
       internal.synthesis.getBatchPayload,
-      args,
+      { ...args, claimToken },
     );
     if (!payload) return null;
     const workKey = `synthesis-group:${payload.batch._id}`;
@@ -99,6 +102,7 @@ export const summarizeBatch = internalAction({
       });
       await ctx.runMutation(internal.synthesis.completeBatch, {
         batchId: payload.batch._id,
+        claimToken,
         ...result.output,
       });
       return null;
@@ -115,6 +119,7 @@ export const summarizeBatch = internalAction({
       const classified = routed ?? classifyProviderError(error);
       await ctx.runMutation(internal.synthesis.failBatch, {
         batchId: payload.batch._id,
+        claimToken,
         retryable: routed ? routed.retryable : classified.retryable,
         errorMessage:
           error instanceof Error ? error.message : "Synthesis group failed",
@@ -127,11 +132,14 @@ export const summarizeBatch = internalAction({
 export const finalizeReport = internalAction({
   args: { batchId: v.id("synthesisBatches") },
   handler: async (ctx, args) => {
-    const claimed = await ctx.runMutation(internal.synthesis.claimBatch, args);
-    if (!claimed) return null;
+    const claimToken = await ctx.runMutation(
+      internal.synthesis.claimBatch,
+      args,
+    );
+    if (!claimToken) return null;
     const payload: FinalPayload | null = await ctx.runQuery(
       internal.synthesis.getFinalPayload,
-      args,
+      { ...args, claimToken },
     );
     if (!payload) return null;
     const workKey = `synthesis-final:${payload.batch._id}`;
@@ -189,6 +197,7 @@ export const finalizeReport = internalAction({
       });
       await ctx.runMutation(internal.synthesis.finalize, {
         batchId: payload.batch._id,
+        claimToken,
         narrative: result.output,
         modelKey: result.modelKey,
         provider: result.provider,
@@ -207,6 +216,7 @@ export const finalizeReport = internalAction({
       const classified = routed ?? classifyProviderError(error);
       await ctx.runMutation(internal.synthesis.failBatch, {
         batchId: payload.batch._id,
+        claimToken,
         retryable: routed ? routed.retryable : classified.retryable,
         errorMessage:
           error instanceof Error ? error.message : "Final synthesis failed",

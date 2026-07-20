@@ -273,23 +273,28 @@ export const claimBatch = internalMutation({
       );
       return false;
     }
+    const claimToken = batch.attempts + 1;
     await ctx.db.patch("synthesisBatches", batch._id, {
       status: "running",
-      attempts: batch.attempts + 1,
+      attempts: claimToken,
       leaseExpiresAt: now + ROUTED_GENERATION_LEASE_MS,
       updatedAt: now,
     });
-    return true;
+    return claimToken;
   },
 });
 
 export const getBatchPayload = internalQuery({
-  args: { batchId: v.id("synthesisBatches") },
+  args: {
+    batchId: v.id("synthesisBatches"),
+    claimToken: v.number(),
+  },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
     if (
       !batch ||
       batch.status !== "running" ||
+      batch.attempts !== args.claimToken ||
       batch.batchNumber === FINAL_BATCH_NUMBER
     ) {
       return null;
@@ -322,6 +327,7 @@ export const getBatchPayload = internalQuery({
 export const completeBatch = internalMutation({
   args: {
     batchId: v.id("synthesisBatches"),
+    claimToken: v.number(),
     summary: v.string(),
     themes: v.array(v.string()),
     objections: v.array(v.string()),
@@ -329,8 +335,13 @@ export const completeBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
-    if (!batch || batch.status === "completed" || batch.status === "failed")
+    if (
+      !batch ||
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
+    ) {
       return null;
+    }
     await ctx.db.patch("synthesisBatches", batch._id, {
       status: "completed",
       leaseExpiresAt: undefined,
@@ -349,13 +360,19 @@ export const completeBatch = internalMutation({
 export const failBatch = internalMutation({
   args: {
     batchId: v.id("synthesisBatches"),
+    claimToken: v.number(),
     retryable: v.boolean(),
     errorMessage: v.string(),
   },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
-    if (!batch || batch.status === "completed" || batch.status === "failed")
+    if (
+      !batch ||
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
+    ) {
       return null;
+    }
     const now = Date.now();
     if (args.retryable && batch.attempts < MAX_SYNTHESIS_ATTEMPTS) {
       await ctx.db.patch("synthesisBatches", batch._id, {
@@ -379,13 +396,17 @@ export const failBatch = internalMutation({
 });
 
 export const getFinalPayload = internalQuery({
-  args: { batchId: v.id("synthesisBatches") },
+  args: {
+    batchId: v.id("synthesisBatches"),
+    claimToken: v.number(),
+  },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
     if (
       !batch ||
       batch.batchNumber !== FINAL_BATCH_NUMBER ||
-      batch.status !== "running"
+      batch.status !== "running" ||
+      batch.attempts !== args.claimToken
     ) {
       return null;
     }
@@ -428,6 +449,7 @@ export const getFinalPayload = internalQuery({
 export const finalize = internalMutation({
   args: {
     batchId: v.id("synthesisBatches"),
+    claimToken: v.union(v.number(), v.null()),
     narrative: narrativeValidator,
     modelKey: v.optional(modelKeyValidator),
     provider: v.optional(providerValidator),
@@ -435,6 +457,12 @@ export const finalize = internalMutation({
   handler: async (ctx, args) => {
     const batch = await ctx.db.get("synthesisBatches", args.batchId);
     if (!batch || batch.batchNumber !== FINAL_BATCH_NUMBER) return null;
+    if (
+      args.claimToken !== null &&
+      (batch.status !== "running" || batch.attempts !== args.claimToken)
+    ) {
+      return null;
+    }
     const existing = await ctx.db
       .query("synthesisReports")
       .withIndex("by_testId", (q) => q.eq("testId", batch.testId))
@@ -566,6 +594,7 @@ export const finalizeFallback = internalMutation({
       internal.synthesis.finalize,
       {
         batchId: batch._id,
+        claimToken: null,
         narrative: {
           executiveSummary:
             "The respondent-level results are available, but the narrative synthesis could not be completed after provider retries. The rankings and percentages below are calculated directly from stored responses.",
