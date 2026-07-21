@@ -1,9 +1,11 @@
 import {
   ArrowRight,
+  BadgeDollarSign,
   Check,
   FileText,
   ImageIcon,
   MessageSquareText,
+  Package,
   Target,
 } from "lucide-react";
 import { AppEntryLink } from "@/components/app-entry-link";
@@ -36,19 +38,29 @@ const useCases = [
     body: "Put competing headlines or value props in front of the panel and ship the one that earns the click.",
   },
   {
+    icon: MessageSquareText,
+    title: "Offers & landing pages",
+    body: "Hear objections and spot missing context before you pay for traffic.",
+  },
+  {
+    icon: ImageIcon,
+    title: "Creative concepts",
+    body: "Get panel reactions to visual directions before the wrong concept costs you revenue.",
+  },
+  {
     icon: Target,
     title: "Positioning",
     body: "Compare ways to frame the same product before the market decides for you.",
   },
   {
-    icon: ImageIcon,
-    title: "Creative concepts",
-    body: "Get panel reactions to visual directions while they're still cheap to change.",
+    icon: BadgeDollarSign,
+    title: "Pricing",
+    body: "Compare price points to find the one customers see as fair and worth paying.",
   },
   {
-    icon: MessageSquareText,
-    title: "Offers & landing pages",
-    body: "Hear objections and spot missing context before you pay for traffic.",
+    icon: Package,
+    title: "Packaging",
+    body: "Compare packaging designs, labels, and visual directions before they reach the shelf.",
   },
 ];
 
@@ -183,40 +195,30 @@ export default function LandingPage() {
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
         <div className="mx-auto max-w-[84rem]">
-          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-            <div>
-              <p className="eyebrow">Use cases</p>
-              <h2 className="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-4xl">
-                For work that’s easy to debate and costly to get wrong.
-              </h2>
-              <p className="text-muted-foreground mt-4 text-lg leading-8">
-                Bring evidence to the decisions that get settled by taste,
-                seniority, or whoever speaks last.
-              </p>
-              <Button asChild variant="outline" className="mt-7">
-                <AppEntryLink signedOutHref="/sign-up">
-                  Test your next decision <ArrowRight />
-                </AppEntryLink>
-              </Button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {useCases.map(({ icon: Icon, title, body }) => (
-                <div
-                  key={title}
-                  className="bg-card rounded-2xl border p-6 shadow-[var(--shadow-sm)]"
-                >
-                  <span className="bg-accent grid size-10 place-items-center rounded-xl">
-                    <Icon className="size-4.5" />
-                  </span>
-                  <h3 className="mt-8 font-semibold tracking-[-0.02em]">
-                    {title}
-                  </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-6">
-                    {body}
-                  </p>
-                </div>
-              ))}
-            </div>
+          <div className="mx-auto max-w-5xl text-center">
+            <p className="eyebrow">Use cases</p>
+            <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] text-balance sm:text-[2.875rem]">
+              Test it before you bet on it
+            </h2>
+          </div>
+
+          <div className="mx-auto mt-14 grid max-w-[72rem] gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {useCases.map(({ icon: Icon, title, body }) => (
+              <div
+                key={title}
+                className="bg-card rounded-2xl border p-6 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)]"
+              >
+                <span className="bg-accent grid size-10 place-items-center rounded-xl">
+                  <Icon className="size-4.5" />
+                </span>
+                <h3 className="mt-8 font-semibold tracking-[-0.02em]">
+                  {title}
+                </h3>
+                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                  {body}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
