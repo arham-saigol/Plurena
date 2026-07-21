@@ -227,43 +227,91 @@ export default function LandingPage() {
         id="pricing"
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
-        <div className="mx-auto grid max-w-[84rem] items-center gap-10 lg:grid-cols-[1fr_400px]">
-          <div>
+        <div className="mx-auto max-w-[72rem]">
+          <div className="text-center">
             <p className="eyebrow">Pricing</p>
-            <h2 className="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-4xl">
+            <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem] sm:whitespace-nowrap">
               Pay for respondents, not subscriptions.
             </h2>
-            <p className="text-muted-foreground mt-4 max-w-xl text-lg leading-8">
-              One credit runs one respondent. Your first 25 are free, and
-              credits never expire. Top up when the next decision needs
-              evidence.
-            </p>
           </div>
-          <div className="bg-card rounded-2xl border p-7 shadow-[var(--shadow-sm)] sm:p-8">
-            <div className="flex items-end gap-2">
-              <span className="text-5xl font-bold tracking-[-0.05em]">1</span>
-              <span className="text-muted-foreground pb-1 text-sm">
-                credit / respondent
-              </span>
+
+          <div className="bg-card mt-12 grid overflow-hidden rounded-2xl border shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="p-7 sm:p-10 lg:p-12">
+              <p className="text-muted-foreground text-xs font-semibold tracking-[0.08em] uppercase">
+                Simple usage pricing
+              </p>
+              <div className="mt-8 grid grid-cols-[auto_auto_auto] items-center justify-start gap-6 sm:gap-10">
+                <div>
+                  <p className="text-5xl leading-none font-bold tracking-[-0.05em] tabular-nums sm:text-6xl">
+                    1
+                  </p>
+                  <p className="text-muted-foreground mt-2 text-sm font-medium">
+                    credit
+                  </p>
+                </div>
+                <span className="grid size-10 place-items-center rounded-full bg-[var(--green-soft)] text-xl font-medium text-[var(--green)] sm:size-12">
+                  =
+                </span>
+                <div>
+                  <p className="text-5xl leading-none font-bold tracking-[-0.05em] tabular-nums sm:text-6xl">
+                    1
+                  </p>
+                  <p className="text-muted-foreground mt-2 text-sm font-medium">
+                    respondent
+                  </p>
+                </div>
+              </div>
+              <div className="mt-10 grid grid-cols-2 gap-6 border-t pt-7">
+                <div>
+                  <p className="text-xl font-semibold tracking-[-0.03em] tabular-nums">
+                    20-250
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    respondents per test
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xl font-semibold tracking-[-0.03em] tabular-nums">
+                    $10
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    minimum top-up
+                  </p>
+                </div>
+              </div>
             </div>
-            <ul className="mt-7 space-y-3 text-sm">
-              {[
-                "25 free credits, no card required",
-                "Top-ups start at $10",
-                "Automatic refunds if a respondent fails",
-                "Credits never expire",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2.5">
-                  <Check className="size-4 shrink-0 text-[var(--green)]" />{" "}
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Button asChild variant="accent" size="lg" className="mt-7 w-full">
-              <AppEntryLink signedOutHref="/sign-up">
-                Start with 25 free credits
-              </AppEntryLink>
-            </Button>
+
+            <div className="border-t bg-[var(--muted)]/55 p-7 sm:p-10 lg:border-t-0 lg:border-l lg:p-12">
+              <p className="eyebrow">Start free</p>
+              <h3 className="mt-3 text-2xl leading-tight font-semibold tracking-[-0.035em] sm:text-3xl">
+                Your first 25 respondents
+                <br className="hidden sm:block" /> are free.
+              </h3>
+              <ul className="mt-7 space-y-4 text-sm">
+                {[
+                  "No card required",
+                  "No subscription",
+                  "Credits never expire",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--green-soft)]">
+                      <Check className="size-3.5 text-[var(--green)]" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                asChild
+                variant="accent"
+                size="lg"
+                className="mt-8 w-full"
+              >
+                <AppEntryLink signedOutHref="/sign-up">
+                  Create your first test <ArrowRight />
+                </AppEntryLink>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
