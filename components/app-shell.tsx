@@ -17,6 +17,7 @@ import {
   Moon,
   Plus,
   Settings,
+  Sparkles,
   Sun,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -31,6 +32,11 @@ import { cn, formatCredits } from "@/lib/utils";
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutDashboard },
   { href: "/app/tests", label: "Tests", icon: FlaskConical },
+];
+
+const mobileNavItems = [
+  ...navItems,
+  { href: "/app/tests/new", label: "New", icon: Plus },
   { href: "/app/billing", label: "Credits", icon: Coins },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
@@ -62,7 +68,7 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
   if (syncError) {
     return (
       <div className="bg-background grid min-h-screen place-items-center p-6">
-        <div className="max-w-sm text-center">
+        <div className="bg-card max-w-sm rounded-2xl border p-8 text-center shadow-[var(--shadow-sm)]">
           <p className="text-destructive text-sm font-medium">
             Could not initialize workspace
           </p>
@@ -78,10 +84,14 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="bg-background grid min-h-screen place-items-center">
-        <div className="w-64 space-y-3">
-          <Skeleton className="h-7 w-28" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-4/5" />
+        <div className="w-72 space-y-4 text-center">
+          <div className="mx-auto grid size-11 place-items-center rounded-xl bg-[var(--orange-soft)]">
+            <Sparkles className="size-5 text-[var(--orange)]" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="mx-auto h-4 w-36" />
+            <Skeleton className="mx-auto h-3 w-52" />
+          </div>
         </div>
       </div>
     );
@@ -96,7 +106,7 @@ function ThemeToggle() {
     () => true,
     () => false,
   );
-  if (!mounted) return <span className="size-8" />;
+  if (!mounted) return <span className="size-10" />;
   const dark = resolvedTheme === "dark";
   return (
     <Button
@@ -116,99 +126,112 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bg-background min-h-screen">
-      <aside className="bg-sidebar fixed inset-y-0 left-0 z-20 hidden w-[270px] flex-col border-r p-2 md:flex">
-        <div className="flex h-11 items-center justify-between px-2">
+      <header className="bg-background/92 sticky top-0 z-30 border-b backdrop-blur-xl">
+        <div className="mx-auto hidden h-16 max-w-[1320px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 lg:grid lg:px-10">
           <Brand href="/app" />
-          <ThemeToggle />
-        </div>
-        <Button asChild variant="blue" className="mt-2 justify-start">
-          <Link href="/app/tests/new">
-            <Plus /> New test
-          </Link>
-        </Button>
-        <nav className="mt-4 space-y-0.5" aria-label="Workspace navigation">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active =
-              href === "/app" ? pathname === href : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground flex h-8 items-center gap-2 rounded-md px-2.5 text-sm transition hover:bg-[var(--sidebar-hover)]",
-                  active &&
-                    "text-foreground bg-[var(--sidebar-hover)] font-medium",
-                )}
-              >
-                <Icon className="size-4" /> {label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-6 px-2.5">
-          <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
-            AVAILABLE CREDITS
-          </p>
-          <p className="mt-1 text-lg font-semibold">
-            {currentUser ? formatCredits(currentUser.creditBalance) : "—"}
-          </p>
-          <Link
-            href="/app/billing"
-            className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--blue)] hover:underline"
+          <nav
+            className="bg-accent/65 flex items-center rounded-lg p-1"
+            aria-label="Workspace navigation"
           >
-            Get credits
-          </Link>
-        </div>
-        <div className="mt-auto flex items-center justify-between rounded-md px-2 py-2 hover:bg-[var(--sidebar-hover)]">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {currentUser?.name ?? "Workspace"}
-            </p>
-            <p className="text-muted-foreground truncate text-xs">
-              {currentUser?.email}
-            </p>
+            {navItems.map(({ href, label }) => {
+              const active =
+                href === "/app" ? pathname === href : pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "text-muted-foreground rounded-md px-3.5 py-1.5 text-sm font-medium transition",
+                    active &&
+                      "bg-background text-foreground shadow-[var(--shadow-sm)]",
+                  )}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="flex items-center justify-end gap-1.5">
+            <Button asChild variant="ghost" className="text-muted-foreground">
+              <Link href="/app/billing">
+                <Coins />
+                {currentUser ? formatCredits(currentUser.creditBalance) : "—"}
+              </Link>
+            </Button>
+            <ThemeToggle />
+            <Button asChild variant="ghost" size="icon">
+              <Link href="/app/settings" aria-label="Settings">
+                <Settings />
+              </Link>
+            </Button>
+            <div className="bg-card ml-1 grid size-10 place-items-center rounded-lg border">
+              <UserButton />
+            </div>
+            <Button asChild variant="blue" className="ml-2">
+              <Link href="/app/tests/new">
+                <Plus /> New test
+              </Link>
+            </Button>
           </div>
-          <UserButton />
         </div>
-      </aside>
 
-      <header className="bg-background/95 sticky top-0 z-20 border-b backdrop-blur md:hidden">
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-15 items-center justify-between px-4 lg:hidden">
           <Brand href="/app" />
           <div className="flex items-center gap-1">
+            <Button asChild size="sm" variant="blue">
+              <Link href="/app/tests/new">
+                <Plus /> New test
+              </Link>
+            </Button>
             <ThemeToggle />
-            <UserButton />
+            <div className="ml-1 grid size-9 place-items-center">
+              <UserButton />
+            </div>
           </div>
         </div>
-        <nav
-          className="flex gap-1 overflow-x-auto px-3 pb-2"
-          aria-label="Mobile workspace navigation"
-        >
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active =
-              href === "/app" ? pathname === href : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "text-muted-foreground inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs",
-                  active && "bg-accent text-foreground",
-                )}
-              >
-                <Icon className="size-3.5" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
       </header>
 
-      <div className="md:pl-[270px]">
-        <main className="mx-auto min-h-screen max-w-[1200px] p-4 sm:p-7 lg:p-10">
-          {children}
-        </main>
-      </div>
+      <nav
+        className="bg-background/94 fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+        aria-label="Mobile workspace navigation"
+      >
+        {mobileNavItems.map(({ href, label, icon: Icon }) => {
+          const active =
+            href === "/app"
+              ? pathname === href
+              : href === "/app/tests"
+                ? pathname.startsWith(href) &&
+                  !pathname.startsWith("/app/tests/new")
+                : pathname.startsWith(href);
+          const create = href === "/app/tests/new";
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "text-muted-foreground flex min-h-15 flex-col items-center justify-center gap-1 text-[10px] font-medium",
+                active && "text-foreground",
+                create && "text-[var(--orange)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-lg",
+                  active && !create && "bg-accent",
+                  create && "bg-[var(--orange-soft)]",
+                )}
+              >
+                <Icon className="size-4" />
+              </span>
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10 lg:pb-12">
+        {children}
+      </main>
     </div>
   );
 }
@@ -223,7 +246,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </AuthLoading>
       <Unauthenticated>
         <div className="grid min-h-screen place-items-center p-6">
-          <div className="text-center">
+          <div className="bg-card rounded-2xl border p-8 text-center shadow-[var(--shadow-sm)]">
             <p className="text-muted-foreground text-sm">
               Your session has expired.
             </p>

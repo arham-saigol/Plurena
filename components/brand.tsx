@@ -14,20 +14,33 @@ export function Brand({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center gap-2 rounded-md font-semibold tracking-[-0.02em]",
+        "inline-flex items-center gap-2.5 rounded-lg font-bold tracking-[-0.035em]",
         className,
       )}
     >
       <span
-        className="bg-foreground grid size-7 grid-cols-2 gap-[2px] rounded-[7px] p-[5px]"
+        className="grid size-7 place-items-center rounded-lg bg-[var(--orange)] shadow-[0_4px_10px_-5px_var(--orange)]"
         aria-hidden
       >
-        <span className="bg-background rounded-[2px]" />
-        <span className="bg-background rounded-full" />
-        <span className="bg-background rounded-full" />
-        <span className="bg-background rounded-[2px]" />
+        <svg
+          viewBox="0 0 24 24"
+          className="size-4.5 fill-none stroke-white"
+          strokeWidth="2.2"
+        >
+          <circle cx="8" cy="8" r="2.2" fill="currentColor" stroke="none" />
+          <circle cx="16" cy="8" r="2.2" fill="currentColor" stroke="none" />
+          <path
+            d="M5.5 16.5c.7-2 2.2-3 4.5-3s3.8 1 4.5 3"
+            strokeLinecap="round"
+          />
+          <path
+            d="M13.5 16.5c.45-1.35 1.5-2.2 3.2-2.5"
+            strokeLinecap="round"
+            opacity=".75"
+          />
+        </svg>
       </span>
-      {!compact && <span className="text-[17px]">Plurena</span>}
+      {!compact && <span className="text-[18px]">Plurena</span>}
     </Link>
   );
 }

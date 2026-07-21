@@ -12,14 +12,16 @@ export function ConfigurationRequired() {
           <Settings2 className="size-5" />
         </div>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-          Connect Clerk to continue
+          Connect your services to continue
         </h1>
         <p className="text-muted-foreground mt-2 text-sm leading-6">
-          The interface is ready, but authentication needs your project
-          credentials. Add the Clerk publishable and secret keys, then set the
+          The interface is ready, but authentication and data need your project
+          credentials. Add the Convex client URL and Clerk keys, then set the
           Clerk JWT issuer on the connected Convex Cloud deployment.
         </p>
         <div className="bg-muted text-muted-foreground mt-5 rounded-lg border p-4 font-mono text-xs leading-6">
+          NEXT_PUBLIC_CONVEX_URL
+          <br />
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
           <br />
           CLERK_SECRET_KEY
