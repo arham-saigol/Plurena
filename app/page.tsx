@@ -12,7 +12,6 @@ import {
 import { AppEntryLink } from "@/components/app-entry-link";
 import { Brand } from "@/components/brand";
 import { MarketingDemo } from "@/components/marketing-demo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 const steps = [
@@ -78,15 +77,12 @@ export default function LandingPage() {
   return (
     <main className="bg-background min-h-screen overflow-hidden">
       <header className="bg-background/85 sticky top-0 z-40 border-b backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-10">
+        <div className="mx-auto flex h-16 max-w-[84rem] items-center justify-between px-4 sm:px-6 lg:px-10">
           <Brand />
           <nav
-            className="text-muted-foreground hidden items-center gap-7 text-sm font-medium md:flex"
+            className="text-foreground hidden items-center gap-7 text-[15px] font-normal md:flex"
             aria-label="Main navigation"
           >
-            <a href="#product" className="hover:text-foreground transition">
-              Product
-            </a>
             <a
               href="#how-it-works"
               className="hover:text-foreground transition"
@@ -100,60 +96,46 @@ export default function LandingPage() {
               Pricing
             </a>
           </nav>
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+          <div className="flex items-center">
+            <Button asChild variant="outline" size="sm" className="sm:h-9">
               <AppEntryLink signedOutHref="/sign-in">Log in</AppEntryLink>
-            </Button>
-            <Button asChild variant="accent" size="sm" className="sm:h-9">
-              <AppEntryLink signedOutHref="/sign-up">Start free</AppEntryLink>
             </Button>
           </div>
         </div>
       </header>
 
       <section className="relative px-4 pt-16 pb-20 sm:px-6 sm:pt-24 sm:pb-24 lg:px-10">
-        <div className="dot-grid pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[560px] max-w-5xl [mask-image:linear-gradient(to_bottom,black,transparent)] opacity-60" />
+        <div className="dot-grid pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[560px] max-w-[84rem] [mask-image:linear-gradient(to_bottom,black,transparent)] opacity-60" />
         <div className="pointer-events-none absolute top-0 left-1/2 -z-10 h-[420px] w-[820px] max-w-[95vw] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--green)_9%,transparent),transparent_68%)]" />
 
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="bg-card text-muted-foreground mx-auto inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-sm)]">
-            <span className="size-1.5 rounded-full bg-[var(--green)]" />
-            Synthetic audience research
-          </div>
-          <h1 className="mt-6 text-[clamp(2.5rem,5.4vw,4.125rem)] leading-[1.05] font-bold tracking-[-0.045em] text-balance">
-            Know which message wins{" "}
-            <span className="relative sm:whitespace-nowrap">
-              before you ship.
-              <span
-                aria-hidden
-                className="absolute inset-x-0 bottom-[0.05em] -z-10 h-[0.22em] rounded-full bg-[color-mix(in_srgb,var(--green)_24%,transparent)]"
-              />
-            </span>
+        <div className="mx-auto max-w-3xl -translate-y-4 text-center sm:-translate-y-9">
+          <h1 className="text-[clamp(2.75rem,5.8vw,5rem)] leading-[1.05] font-bold tracking-[-0.045em] text-balance">
+            Know what wins
           </h1>
-          <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-8 text-balance">
-            Plurena builds a panel of synthetic respondents from your audience
-            description and asks each one to choose between your options. You
-            get a winner and the reasoning behind it.
+          <p className="text-muted-foreground mx-auto mt-6 max-w-[38rem] text-xl leading-8 text-balance">
+            Compare your options with a synthetic audience
+            <br className="hidden sm:block" /> and learn why one wins.
           </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" variant="accent" className="sm:min-w-52">
+          <div className="mt-8">
+            <Button
+              asChild
+              size="lg"
+              variant="accent"
+              className="h-13 px-6 text-base sm:min-w-56"
+            >
               <AppEntryLink signedOutHref="/sign-up">
                 Create your first test <ArrowRight />
               </AppEntryLink>
             </Button>
-            <Button asChild size="lg" variant="outline" className="sm:min-w-44">
-              <a href="#product">See a sample report</a>
-            </Button>
           </div>
-          <p className="text-muted-foreground mt-4 text-xs">
-            25 free credits · No card required · One credit runs one respondent
+          <p className="text-muted-foreground mt-2.5 text-[13px]">
+            25 free credits. No card required
           </p>
         </div>
 
         <div
           id="product"
-          className="mx-auto mt-14 max-w-5xl scroll-mt-24 sm:mt-18"
+          className="mx-auto mt-14 max-w-[80rem] scroll-mt-24 sm:mt-24"
         >
           <p className="text-muted-foreground mb-3 text-center text-xs font-semibold tracking-[0.08em] uppercase">
             A sample report
@@ -163,7 +145,7 @@ export default function LandingPage() {
       </section>
 
       <section className="px-4 pb-20 sm:px-6 sm:pb-24 lg:px-10">
-        <div className="mx-auto grid max-w-5xl gap-10 sm:grid-cols-3 sm:gap-8">
+        <div className="mx-auto grid max-w-[84rem] gap-10 sm:grid-cols-3 sm:gap-8">
           {readingPoints.map(({ icon: Icon, title, body }) => (
             <div key={title}>
               <span className="bg-accent grid size-9 place-items-center rounded-lg">
@@ -184,7 +166,7 @@ export default function LandingPage() {
         id="how-it-works"
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-[84rem]">
           <div className="max-w-2xl">
             <p className="eyebrow">How it works</p>
             <h2 className="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-4xl">
@@ -221,7 +203,7 @@ export default function LandingPage() {
         id="use-cases"
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-[84rem]">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
             <div>
               <p className="eyebrow">Use cases</p>
@@ -264,7 +246,7 @@ export default function LandingPage() {
         id="pricing"
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
-        <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[1fr_400px]">
+        <div className="mx-auto grid max-w-[84rem] items-center gap-10 lg:grid-cols-[1fr_400px]">
           <div>
             <p className="eyebrow">Pricing</p>
             <h2 className="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-4xl">
@@ -324,7 +306,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="border-t px-4 py-8 sm:px-6 lg:px-10">
-        <div className="text-muted-foreground mx-auto flex max-w-5xl flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-muted-foreground mx-auto flex max-w-[84rem] flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <Brand />
           <p className="max-w-md text-xs leading-5">
             Directional synthetic research. Validate high-stakes decisions with
