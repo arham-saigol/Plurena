@@ -1,12 +1,9 @@
 import {
   ArrowRight,
-  BarChart3,
   Check,
   FileText,
   ImageIcon,
-  Layers,
   MessageSquareText,
-  MessagesSquare,
   Target,
 } from "lucide-react";
 import { AppEntryLink } from "@/components/app-entry-link";
@@ -17,36 +14,18 @@ import { Button } from "@/components/ui/button";
 const steps = [
   {
     number: "01",
-    title: "Frame the decision",
+    title: "Add your options",
     body: "Name the question and add two to eight options: headlines, positioning, offers, or creative concepts.",
   },
   {
     number: "02",
-    title: "Shape the audience",
+    title: "Define your audience",
     body: "Describe who the message is for and what shapes their judgment. Plurena builds a panel of distinct respondents to match.",
   },
   {
     number: "03",
-    title: "Act on the evidence",
+    title: "See what wins",
     body: "Each respondent answers on their own. Plurena synthesizes the panel into a ranked report with the reasoning attached.",
-  },
-];
-
-const readingPoints = [
-  {
-    icon: BarChart3,
-    title: "The answer first",
-    body: "Reports open with the winner and the strength of the result, so the next step is clear from the first line.",
-  },
-  {
-    icon: Layers,
-    title: "The reasoning underneath",
-    body: "Segment splits and objections sit one level down, ready when you need them.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "Responses on the record",
-    body: "Open any respondent to read why they chose what they chose, in their own words.",
   },
 ];
 
@@ -144,58 +123,58 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="px-4 pb-20 sm:px-6 sm:pb-24 lg:px-10">
-        <div className="mx-auto grid max-w-[84rem] gap-10 sm:grid-cols-3 sm:gap-8">
-          {readingPoints.map(({ icon: Icon, title, body }) => (
-            <div key={title}>
-              <span className="bg-accent grid size-9 place-items-center rounded-lg">
-                <Icon className="size-4 text-[var(--green)]" />
-              </span>
-              <h3 className="mt-4 font-semibold tracking-[-0.015em]">
-                {title}
-              </h3>
-              <p className="text-muted-foreground mt-1.5 text-sm leading-6">
-                {body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section
         id="how-it-works"
         className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
       >
         <div className="mx-auto max-w-[84rem]">
-          <div className="max-w-2xl">
+          <div className="mx-auto max-w-5xl text-center">
             <p className="eyebrow">How it works</p>
-            <h2 className="mt-3 text-3xl leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-4xl">
-              From question to direction in three steps.
+            <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] text-balance sm:text-[2.875rem] lg:whitespace-nowrap">
+              Find your audience&apos;s top choice in 3 steps.
             </h2>
-            <p className="text-muted-foreground mt-4 text-lg leading-8">
-              Setup is a short brief. Plurena builds the panel, collects the
-              answers, and writes the report.
-            </p>
           </div>
 
-          <ol className="bg-card mt-12 grid overflow-hidden rounded-2xl border shadow-[var(--shadow-sm)] sm:grid-cols-3 sm:divide-x">
+          <ol className="mx-auto mt-14 grid max-w-[72rem] gap-6 lg:grid-cols-3 lg:gap-14">
             {steps.map(({ number, title, body }) => (
               <li
                 key={number}
-                className="border-b p-6 last:border-b-0 sm:border-b-0 sm:p-7"
+                className="bg-card relative min-h-64 rounded-2xl border p-7 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] sm:p-8"
               >
-                <span className="text-xs font-bold text-[var(--green)]">
+                <span className="text-sm font-bold text-[var(--green)]">
                   {number}
                 </span>
-                <h3 className="mt-10 font-semibold tracking-[-0.02em]">
+                <h3 className="mt-16 text-lg font-semibold tracking-[-0.025em]">
                   {title}
                 </h3>
-                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                <p className="text-muted-foreground mt-2.5 text-[15px] leading-6">
                   {body}
                 </p>
+                {number !== "03" && (
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="text-muted-foreground absolute right-1/2 -bottom-[22px] z-10 size-5 translate-x-1/2 rotate-90 lg:top-1/2 lg:-right-[38px] lg:bottom-auto lg:translate-x-0 lg:-translate-y-1/2 lg:rotate-0"
+                  />
+                )}
               </li>
             ))}
           </ol>
+
+          <div className="mt-12 text-center">
+            <Button
+              asChild
+              size="lg"
+              variant="accent"
+              className="h-13 px-6 text-base sm:min-w-56"
+            >
+              <AppEntryLink signedOutHref="/sign-up">
+                Create your first test <ArrowRight />
+              </AppEntryLink>
+            </Button>
+            <p className="text-muted-foreground mt-2.5 text-[13px]">
+              25 free credits. No card required
+            </p>
+          </div>
         </div>
       </section>
 
