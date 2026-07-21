@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 
 export function ConfigurationRequired() {
   return (
-    <main className="bg-muted grid min-h-screen place-items-center p-6">
-      <div className="bg-background w-full max-w-lg rounded-xl border p-7 shadow-sm">
+    <main className="bg-background grid min-h-screen place-items-center p-6">
+      <div className="bg-card w-full max-w-lg rounded-2xl border p-7 shadow-[var(--shadow-sm)] sm:p-8">
         <Brand />
         <div className="bg-accent mt-8 grid size-10 place-items-center rounded-lg">
           <Settings2 className="size-5" />

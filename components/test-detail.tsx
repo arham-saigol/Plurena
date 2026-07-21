@@ -274,7 +274,7 @@ function RespondentDialog({
               <ul className="mt-2 space-y-2 text-sm leading-6">
                 {response.comparisons.map((comparison) => (
                   <li key={comparison} className="flex gap-2">
-                    <span className="text-[var(--orange)]">→</span>
+                    <span className="text-[var(--green)]">→</span>
                     {comparison}
                   </li>
                 ))}
@@ -760,7 +760,7 @@ export function TestDetail({ testId }: { testId: Id<"tests"> }) {
         actions={
           details.test.status === "draft" ? (
             <>
-              <Button asChild variant="blue">
+              <Button asChild variant="accent">
                 <Link href={`/app/tests/new?draft=${details.test._id}`}>
                   <FilePenLine /> Continue editing
                 </Link>

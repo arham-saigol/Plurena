@@ -11,10 +11,10 @@ export default function SsoCallbackPage() {
     return <ConfigurationRequired />;
 
   return (
-    <main className="marketing bg-background grid min-h-screen place-items-center p-6">
+    <main className="bg-background grid min-h-screen place-items-center p-6">
       <div className="text-center">
         <Brand className="justify-center" />
-        <Loader2 className="mx-auto mt-8 size-5 animate-spin text-[var(--orange)]" />
+        <Loader2 className="mx-auto mt-8 size-5 animate-spin text-[var(--green)]" />
         <h1 className="mt-4 font-semibold">Finishing Google sign-in</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Your workspace will open automatically.

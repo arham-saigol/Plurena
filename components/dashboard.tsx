@@ -52,7 +52,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
             : "Move from a marketing question to a clear, audience-backed direction."
         }
         actions={
-          <Button asChild variant="blue">
+          <Button asChild variant="accent">
             <Link href="/app/tests/new">
               <Plus /> New test
             </Link>

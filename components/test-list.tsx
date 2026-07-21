@@ -60,7 +60,7 @@ export function TestList({
   if (tests.length === 0) {
     return (
       <div className="fine-grid rounded-2xl border border-dashed px-6 py-16 text-center">
-        <div className="mx-auto grid size-12 place-items-center rounded-xl bg-[var(--orange-soft)] text-[var(--orange)]">
+        <div className="mx-auto grid size-12 place-items-center rounded-xl bg-[var(--green-soft)] text-[var(--green)]">
           <FlaskConical className="size-5" />
         </div>
         <h2 className="mt-4 text-lg font-bold tracking-[-0.025em]">
@@ -70,7 +70,7 @@ export function TestList({
           Add the options you are debating and describe the audience the choice
           needs to move.
         </p>
-        <Button asChild variant="blue" className="mt-5">
+        <Button asChild variant="accent" className="mt-5">
           <Link href="/app/tests/new">
             <Plus /> Create your first test
           </Link>

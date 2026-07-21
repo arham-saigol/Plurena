@@ -19,12 +19,12 @@ export function Brand({
       )}
     >
       <span
-        className="grid size-7 place-items-center rounded-lg bg-[var(--orange)] shadow-[0_4px_10px_-5px_var(--orange)]"
+        className="grid size-7 place-items-center rounded-lg bg-[var(--cta)] shadow-[0_4px_12px_-6px_var(--cta)]"
         aria-hidden
       >
         <svg
           viewBox="0 0 24 24"
-          className="size-4.5 fill-none stroke-white"
+          className="size-4.5 fill-none stroke-[var(--cta-foreground)]"
           strokeWidth="2.2"
         >
           <circle cx="8" cy="8" r="2.2" fill="currentColor" stroke="none" />

@@ -14,20 +14,19 @@ import {
   Coins,
   FlaskConical,
   LayoutDashboard,
-  Moon,
   Plus,
   Settings,
   Sparkles,
-  Sun,
 } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { Brand } from "@/components/brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCredits } from "@/lib/utils";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutDashboard },
@@ -85,8 +84,8 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
     return (
       <div className="bg-background grid min-h-screen place-items-center">
         <div className="w-72 space-y-4 text-center">
-          <div className="mx-auto grid size-11 place-items-center rounded-xl bg-[var(--orange-soft)]">
-            <Sparkles className="size-5 text-[var(--orange)]" />
+          <div className="mx-auto grid size-11 place-items-center rounded-xl bg-[var(--green-soft)]">
+            <Sparkles className="size-5 text-[var(--green)]" />
           </div>
           <div className="space-y-2">
             <Skeleton className="mx-auto h-4 w-36" />
@@ -99,38 +98,17 @@ function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
   return children;
 }
 
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const mounted = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
-  if (!mounted) return <span className="size-10" />;
-  const dark = resolvedTheme === "dark";
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={`Switch to ${dark ? "light" : "dark"} theme`}
-      onClick={() => setTheme(dark ? "light" : "dark")}
-    >
-      {dark ? <Sun /> : <Moon />}
-    </Button>
-  );
-}
-
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const currentUser = useQuery(api.users.current);
 
   return (
     <div className="bg-background min-h-screen">
-      <header className="bg-background/92 sticky top-0 z-30 border-b backdrop-blur-xl">
+      <header className="bg-background/85 sticky top-0 z-30 border-b backdrop-blur-xl">
         <div className="mx-auto hidden h-16 max-w-[1320px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 lg:grid lg:px-10">
           <Brand href="/app" />
           <nav
-            className="bg-accent/65 flex items-center rounded-lg p-1"
+            className="bg-card flex items-center rounded-lg border p-1"
             aria-label="Workspace navigation"
           >
             {navItems.map(({ href, label }) => {
@@ -143,7 +121,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "text-muted-foreground rounded-md px-3.5 py-1.5 text-sm font-medium transition",
                     active &&
-                      "bg-background text-foreground shadow-[var(--shadow-sm)]",
+                      "bg-accent text-foreground shadow-[var(--shadow-sm)]",
                   )}
                 >
                   {label}
@@ -164,10 +142,10 @@ function Shell({ children }: { children: React.ReactNode }) {
                 <Settings />
               </Link>
             </Button>
-            <div className="bg-card ml-1 grid size-10 place-items-center rounded-lg border">
-              <UserButton />
+            <div className="ml-1 grid size-10 place-items-center">
+              <UserButton appearance={clerkAppearance} />
             </div>
-            <Button asChild variant="blue" className="ml-2">
+            <Button asChild variant="accent" className="ml-1.5">
               <Link href="/app/tests/new">
                 <Plus /> New test
               </Link>
@@ -178,21 +156,21 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex h-15 items-center justify-between px-4 lg:hidden">
           <Brand href="/app" />
           <div className="flex items-center gap-1">
-            <Button asChild size="sm" variant="blue">
+            <Button asChild size="sm" variant="accent">
               <Link href="/app/tests/new">
                 <Plus /> New test
               </Link>
             </Button>
             <ThemeToggle />
             <div className="ml-1 grid size-9 place-items-center">
-              <UserButton />
+              <UserButton appearance={clerkAppearance} />
             </div>
           </div>
         </div>
       </header>
 
       <nav
-        className="bg-background/94 fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+        className="bg-background/90 fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
         aria-label="Mobile workspace navigation"
       >
         {mobileNavItems.map(({ href, label, icon: Icon }) => {
@@ -211,14 +189,14 @@ function Shell({ children }: { children: React.ReactNode }) {
               className={cn(
                 "text-muted-foreground flex min-h-15 flex-col items-center justify-center gap-1 text-[10px] font-medium",
                 active && "text-foreground",
-                create && "text-[var(--orange)]",
+                create && "text-[var(--green)]",
               )}
             >
               <span
                 className={cn(
                   "grid size-7 place-items-center rounded-lg",
                   active && !create && "bg-accent",
-                  create && "bg-[var(--orange-soft)]",
+                  create && "bg-[var(--green-soft)]",
                 )}
               >
                 <Icon className="size-4" />
