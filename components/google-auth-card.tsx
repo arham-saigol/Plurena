@@ -68,7 +68,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
 
   if (isLoaded && isSignedIn) {
     return (
-      <div className="bg-card rounded-2xl border p-8 text-center shadow-[var(--shadow-md)]">
+      <div className="bg-card rounded-2xl border p-8 text-center shadow-[var(--shadow-sm)]">
         <Loader2 className="mx-auto size-5 animate-spin text-[var(--orange)]" />
         <p className="mt-4 font-semibold">Opening your workspace</p>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -81,7 +81,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
   const busy = !isLoaded || submitting || fetchStatus === "fetching";
 
   return (
-    <div className="bg-card rounded-2xl border p-6 shadow-[var(--shadow-md)] sm:p-8">
+    <div className="bg-card rounded-2xl border p-6 shadow-[var(--shadow-sm)] sm:p-8">
       <p className="eyebrow">{content.eyebrow}</p>
       <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-balance">
         {content.title}

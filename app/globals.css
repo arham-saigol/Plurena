@@ -110,7 +110,7 @@ body {
   color: var(--foreground);
   font-family:
     var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   letter-spacing: -0.008em;
 }
 
@@ -151,6 +151,13 @@ select {
   --blue-soft: #eaf3fc;
   --green: #237a57;
   --green-soft: #e9f5ef;
+  --ring: #e16540;
+  --shadow-sm:
+    0 0 0 1px rgba(32, 31, 29, 0.025), 0 1px 2px rgba(32, 31, 29, 0.05),
+    0 6px 18px rgba(32, 31, 29, 0.025);
+  --shadow-lift:
+    0 0 0 1px rgba(32, 31, 29, 0.035), 0 18px 60px rgba(66, 53, 43, 0.1);
+
   color-scheme: light;
   background: #fbfaf9;
   color: #201f1d;

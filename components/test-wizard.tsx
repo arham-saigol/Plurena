@@ -461,6 +461,7 @@ function TestWizardForm({
               <li key={label}>
                 <button
                   onClick={() => index <= step && setStep(index)}
+                  disabled={index > step}
                   className="w-full text-left"
                   aria-current={step === index ? "step" : undefined}
                 >
@@ -856,7 +857,7 @@ function TestWizardForm({
             )}
           </Card>
 
-          <div className="bg-background/94 sticky bottom-20 z-10 flex items-center justify-between rounded-xl border p-2 shadow-[var(--shadow-sm)] backdrop-blur-xl md:bottom-4">
+          <div className="bg-background/94 sticky bottom-20 z-10 flex items-center justify-between rounded-xl border p-2 shadow-[var(--shadow-sm)] backdrop-blur-xl lg:bottom-4">
             <Button
               variant="ghost"
               disabled={step === 0 || saving}

@@ -8,7 +8,10 @@ type AppEntryLinkProps = Omit<React.ComponentProps<typeof Link>, "href"> & {
 };
 
 export function AppEntryLink({ signedOutHref, ...props }: AppEntryLinkProps) {
-  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  if (
+    !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  ) {
     return <Link href={signedOutHref} {...props} />;
   }
   return <ConfiguredAppEntryLink signedOutHref={signedOutHref} {...props} />;
