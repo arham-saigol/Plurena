@@ -1,8 +1,15 @@
 import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import { Brand } from "@/components/brand";
+import { ConfigurationRequired } from "@/components/configuration-required";
 
 export default function SsoCallbackPage() {
+  if (
+    !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  )
+    return <ConfigurationRequired />;
+
   return (
     <main className="marketing bg-background grid min-h-screen place-items-center p-6">
       <div className="text-center">
