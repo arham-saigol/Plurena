@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
@@ -15,20 +17,23 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <main className="grid min-h-screen place-items-center p-6">
+    <main className="bg-background grid min-h-screen place-items-center p-6">
       <div className="max-w-md text-center">
-        <p className="text-destructive text-sm font-medium">
-          Something went wrong
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold">
+        <div className="mx-auto grid size-11 place-items-center rounded-xl bg-[var(--destructive-soft)]">
+          <AlertTriangle className="size-5 text-[var(--destructive)]" />
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">
           This page could not be loaded.
         </h1>
         <p className="text-muted-foreground mt-2 text-sm leading-6">
-          Your data is safe. Try the request again, or return to the dashboard.
+          Your data is safe. Try the request again, or return to the workspace.
         </p>
-        <Button className="mt-5" onClick={reset}>
-          Try again
-        </Button>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/app">Go to workspace</Link>
+          </Button>
+          <Button onClick={reset}>Try again</Button>
+        </div>
       </div>
     </main>
   );

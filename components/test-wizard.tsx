@@ -417,7 +417,7 @@ function TestWizardForm({
                         index < step &&
                           "border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]",
                         index === step &&
-                          "border-[var(--orange)] bg-[var(--orange)] text-white",
+                          "border-[var(--cta)] bg-[var(--cta)] text-[var(--cta-foreground)]",
                       )}
                     >
                       {index < step ? (
@@ -468,7 +468,7 @@ function TestWizardForm({
                   <span
                     className={cn(
                       "mb-2 block h-1 rounded-full",
-                      index <= step ? "bg-[var(--orange)]" : "bg-accent",
+                      index <= step ? "bg-[var(--cta)]" : "bg-accent",
                     )}
                   />
                   <span
@@ -545,7 +545,7 @@ function TestWizardForm({
                         className={cn(
                           "hover:bg-accent/50 rounded-lg border p-4 text-left transition",
                           optionType === type &&
-                            "border-foreground ring-foreground ring-1",
+                            "border-[var(--cta)] ring-2 ring-[var(--cta)]/20",
                         )}
                       >
                         <Icon className="size-5" />
@@ -867,7 +867,7 @@ function TestWizardForm({
             </Button>
             {step < steps.length - 1 ? (
               <Button
-                variant="blue"
+                variant="accent"
                 onClick={() => setStep((current) => current + 1)}
                 disabled={
                   (step === 0 && (!name.trim() || !question.trim())) ||
@@ -878,7 +878,7 @@ function TestWizardForm({
               </Button>
             ) : (
               <Button
-                variant="blue"
+                variant="accent"
                 size="lg"
                 onClick={() => void launch()}
                 disabled={

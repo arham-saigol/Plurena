@@ -41,7 +41,7 @@ export function CheckoutStatus() {
   if (checkout.status === "completed") {
     return (
       <StatusContent
-        icon={<CheckCircle2 className="text-emerald-500" />}
+        icon={<CheckCircle2 className="text-[var(--green)]" />}
         title={`${formatCredits(checkout.credits)} added`}
         description="Your payment is confirmed and the credits are ready to use."
       />
@@ -106,7 +106,7 @@ function StatusContent({
             <Button asChild variant="outline">
               <Link href="/app/billing">View billing</Link>
             </Button>
-            <Button asChild variant="blue">
+            <Button asChild variant="accent">
               <Link href="/app/tests/new">Create a test</Link>
             </Button>
           </div>

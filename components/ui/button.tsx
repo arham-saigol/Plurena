@@ -8,13 +8,15 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-[0_1px_1px_rgba(0,0,0,0.08),0_8px_18px_-12px_rgba(0,0,0,0.7)] hover:opacity-90",
-        secondary: "bg-accent text-accent-foreground hover:bg-border",
+          "bg-primary text-primary-foreground shadow-[0_1px_1px_rgba(0,0,0,0.06),0_8px_18px_-12px_rgba(0,0,0,0.55)] hover:opacity-90",
+        secondary: "bg-accent text-accent-foreground hover:bg-muted",
         outline:
           "border bg-background shadow-[var(--shadow-sm)] hover:bg-accent hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        destructive: "bg-destructive text-white hover:opacity-88",
-        blue: "bg-[var(--orange)] text-white shadow-[0_1px_1px_rgba(0,0,0,0.06),0_0_0_1px_rgba(225,101,64,0.18),0_8px_16px_-8px_rgba(225,101,64,0.64),inset_0_-1px_2px_rgba(181,81,51,0.48)] hover:bg-[var(--orange-hover)]",
+        destructive:
+          "bg-[var(--destructive-strong)] text-white hover:opacity-90",
+        accent:
+          "bg-[var(--cta)] text-[var(--cta-foreground)] shadow-[0_1px_1px_rgba(0,0,0,0.06),0_8px_18px_-10px_color-mix(in_srgb,var(--cta)_65%,transparent)] hover:bg-[var(--cta-hover)]",
       },
       size: {
         default: "h-10 px-4",

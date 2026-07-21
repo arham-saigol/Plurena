@@ -36,7 +36,7 @@ export function CheckoutCanceled() {
             <Button asChild variant="outline">
               <Link href="/app">Back to workspace</Link>
             </Button>
-            <Button asChild variant="blue">
+            <Button asChild variant="accent">
               <Link href="/app/billing">Try again</Link>
             </Button>
           </div>

@@ -10,20 +10,20 @@ import { Button } from "@/components/ui/button";
 const copy = {
   "sign-in": {
     eyebrow: "Welcome back",
-    title: "Continue to Plurena",
+    title: "Log in to Plurena",
     description:
-      "Open your workspace to continue a draft, check a live panel, or review a decision.",
+      "Open your workspace to pick up a draft, check a live panel, or review a decision.",
     action: "Continue with Google",
     alternate: "New to Plurena?",
     alternateAction: "Start free",
     alternateHref: "/sign-up",
   },
   "sign-up": {
-    eyebrow: "Start with 25 credits",
-    title: "Make the next choice clearer",
+    eyebrow: "Start with 25 free credits",
+    title: "Create your workspace",
     description:
-      "Create your workspace and run a useful first panel—no card or subscription required.",
-    action: "Start with Google",
+      "Run your first panel in minutes — no card or subscription required.",
+    action: "Continue with Google",
     alternate: "Already have a workspace?",
     alternateAction: "Log in",
     alternateHref: "/sign-in",
@@ -69,7 +69,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
   if (isLoaded && isSignedIn) {
     return (
       <div className="bg-card rounded-2xl border p-8 text-center shadow-[var(--shadow-sm)]">
-        <Loader2 className="mx-auto size-5 animate-spin text-[var(--orange)]" />
+        <Loader2 className="mx-auto size-5 animate-spin text-[var(--green)]" />
         <p className="mt-4 font-semibold">Opening your workspace</p>
         <p className="text-muted-foreground mt-1 text-sm">
           Your session is ready.
@@ -83,7 +83,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
   return (
     <div className="bg-card rounded-2xl border p-6 shadow-[var(--shadow-sm)] sm:p-8">
       <p className="eyebrow">{content.eyebrow}</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-balance">
+      <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-balance">
         {content.title}
       </h1>
       <p className="text-muted-foreground mt-3 text-sm leading-6">
@@ -119,7 +119,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
         </Link>
       </p>
       <p className="text-muted-foreground mt-5 border-t pt-5 text-center text-xs leading-5">
-        By continuing, you agree to use Plurena for directional research and
+        By continuing, you agree to use Plurena for directional research and to
         validate high-stakes decisions with real customers too.
       </p>
     </div>

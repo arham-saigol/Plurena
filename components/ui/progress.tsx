@@ -9,7 +9,7 @@ export function Progress({
   return (
     <ProgressPrimitive.Root
       className={cn(
-        "bg-accent ring-foreground/[0.03] h-1.5 w-full overflow-hidden rounded-full ring-1",
+        "bg-accent ring-foreground/[0.04] h-1.5 w-full overflow-hidden rounded-full ring-1",
         className,
       )}
       value={value}

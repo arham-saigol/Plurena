@@ -4,6 +4,7 @@ import { UserProfile } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { Bot, Cloud, CreditCard, LockKeyhole } from "lucide-react";
 import { api } from "@/convex/_generated/api";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -83,6 +84,7 @@ export function SettingsPanel() {
           <UserProfile
             routing="hash"
             appearance={{
+              ...clerkAppearance,
               elements: {
                 cardBox: "w-full shadow-none",
                 navbar: "border-r",

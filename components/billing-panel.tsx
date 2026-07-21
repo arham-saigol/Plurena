@@ -55,7 +55,7 @@ export function BillingPanel() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[0.75fr_1.65fr]">
-        <Card className="overflow-hidden border-[var(--orange)]/18 bg-[linear-gradient(145deg,var(--orange-soft),transparent_68%)]">
+        <Card className="overflow-hidden border-[var(--green)]/20 bg-[linear-gradient(145deg,var(--green-soft),transparent_68%)]">
           <CardHeader>
             <CardDescription>Available credits</CardDescription>
             <CardTitle className="text-4xl tabular-nums">
@@ -72,8 +72,8 @@ export function BillingPanel() {
               and failed respondent work is automatically refunded.
             </p>
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
-              <ShieldCheck className="size-4 text-emerald-500" /> Payments are
-              processed securely by Creem.
+              <ShieldCheck className="size-4 text-[var(--green)]" /> Payments
+              are processed securely by Creem.
             </div>
           </CardContent>
         </Card>
@@ -106,9 +106,9 @@ export function BillingPanel() {
                       className={cn(
                         "hover:border-foreground/30 relative rounded-lg border p-4 text-left transition",
                         highestBonus &&
-                          "border-[var(--orange)]/25 bg-[var(--orange-soft)]/55",
+                          "border-[var(--green)]/25 bg-[var(--green-soft)]/60",
                         selected &&
-                          "border-[var(--blue)] ring-2 ring-[var(--blue)]/15",
+                          "border-[var(--cta)] ring-2 ring-[var(--cta)]/20",
                       )}
                     >
                       <p className="text-xl font-semibold tabular-nums">
@@ -135,7 +135,7 @@ export function BillingPanel() {
                 payment webhook.
               </p>
               <Button
-                variant="blue"
+                variant="accent"
                 size="lg"
                 disabled={submitting || !selectedOption}
                 onClick={() => void startCheckout()}
@@ -204,7 +204,7 @@ export function BillingPanel() {
                     </div>
                     <div className="text-right">
                       <p
-                        className={`text-sm font-semibold tabular-nums ${positive ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+                        className={`text-sm font-semibold tabular-nums ${positive ? "text-[var(--green)]" : ""}`}
                       >
                         {positive ? "+" : ""}
                         {formatCredits(entry.amountCredits)}

@@ -4,69 +4,75 @@
 
 :root {
   --background: #fbfaf9;
-  --foreground: #201f1d;
+  --foreground: #262626;
   --card: #ffffff;
-  --card-foreground: #201f1d;
-  --muted: #f4f2ef;
-  --muted-foreground: #706c67;
-  --border: #e7e2dc;
-  --input: #dcd6cf;
-  --primary: #201f1d;
-  --primary-foreground: #ffffff;
-  --accent: #f0ede9;
-  --accent-foreground: #201f1d;
-  --destructive: #c73e3e;
-  --ring: #e16540;
-  --orange: #e16540;
-  --orange-hover: #d25732;
-  --orange-soft: #fdf0eb;
-  --blue: #006fd6;
-  --blue-soft: #eaf3fc;
-  --green: #237a57;
-  --green-soft: #e9f5ef;
-  --amber: #9a6700;
-  --amber-soft: #fbf1db;
-  --sidebar: #fbfaf9;
-  --sidebar-hover: #f0ede9;
-  --radius: 0.65rem;
+  --card-foreground: #262626;
+  --muted: #f4f3f1;
+  --muted-foreground: #6f6a65;
+  --border: #f0efee;
+  --input: #e2dfdb;
+  --primary: #262626;
+  --primary-foreground: #fafaf9;
+  --accent: #efedea;
+  --accent-foreground: #262626;
+  --ring: #1d7a56;
+  --destructive: #b73a2b;
+  --destructive-strong: #b73a2b;
+  --destructive-soft: #fae9e6;
+  --green: #1d7a56;
+  --green-soft: #e8f4ed;
+  --cta: #1d7a56;
+  --cta-hover: #176245;
+  --cta-foreground: #ffffff;
+  --blue: #1c68c8;
+  --blue-soft: #eaf2fb;
+  --amber: #8f6605;
+  --amber-soft: #faf1dc;
+  --grid-line: rgba(38, 38, 38, 0.05);
+  --grid-dot: #ddd9d4;
+  --radius: 0.625rem;
   --shadow-sm:
-    0 0 0 1px rgba(32, 31, 29, 0.025), 0 1px 2px rgba(32, 31, 29, 0.05),
-    0 6px 18px rgba(32, 31, 29, 0.025);
+    0 0 0 1px rgba(38, 38, 38, 0.02), 0 1px 2px rgba(38, 38, 38, 0.04),
+    0 8px 24px -12px rgba(38, 38, 38, 0.08);
   --shadow-lift:
-    0 0 0 1px rgba(32, 31, 29, 0.035), 0 18px 60px rgba(66, 53, 43, 0.1);
+    0 0 0 1px rgba(38, 38, 38, 0.03), 0 2px 4px rgba(38, 38, 38, 0.04),
+    0 24px 64px -24px rgba(38, 38, 38, 0.18);
 }
 
 .dark {
-  --background: #181715;
-  --foreground: #f2efeb;
-  --card: #201f1d;
-  --card-foreground: #f2efeb;
-  --muted: #272522;
-  --muted-foreground: #aaa49d;
-  --border: #37332f;
-  --input: #45413c;
-  --primary: #f2efeb;
-  --primary-foreground: #201f1d;
-  --accent: #2d2a27;
-  --accent-foreground: #f1f1ef;
-  --destructive: #e06c6c;
-  --ring: #ef805e;
-  --orange: #ef805e;
-  --orange-hover: #f18d6e;
-  --orange-soft: #3c2922;
-  --blue: #67aeef;
-  --blue-soft: #1e3448;
-  --green: #6cb98e;
-  --green-soft: #20382c;
-  --amber: #d6a84b;
-  --amber-soft: #43371f;
-  --sidebar: #181715;
-  --sidebar-hover: #2d2a27;
+  --background: #1f1f1f;
+  --foreground: #dedddc;
+  --card: #262626;
+  --card-foreground: #dedddc;
+  --muted: #2a2a2a;
+  --muted-foreground: #a8a5a1;
+  --border: #353636;
+  --input: #414242;
+  --primary: #eae8e6;
+  --primary-foreground: #1f1f1f;
+  --accent: #2e2e2e;
+  --accent-foreground: #eae8e6;
+  --ring: #4fb489;
+  --destructive: #e27267;
+  --destructive-strong: #be4438;
+  --destructive-soft: #3a2422;
+  --green: #63c398;
+  --green-soft: #1f332b;
+  --cta: #4fb489;
+  --cta-hover: #63c398;
+  --cta-foreground: #10251b;
+  --blue: #6fa8ea;
+  --blue-soft: #223242;
+  --amber: #d9ae5f;
+  --amber-soft: #38301e;
+  --grid-line: rgba(222, 221, 220, 0.05);
+  --grid-dot: #3a3b3b;
   --shadow-sm:
-    0 0 0 1px rgba(255, 255, 255, 0.025), 0 1px 2px rgba(0, 0, 0, 0.2),
-    0 8px 24px rgba(0, 0, 0, 0.08);
+    0 0 0 1px rgba(255, 255, 255, 0.02), 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 8px 24px -12px rgba(0, 0, 0, 0.4);
   --shadow-lift:
-    0 0 0 1px rgba(255, 255, 255, 0.035), 0 18px 60px rgba(0, 0, 0, 0.3);
+    0 0 0 1px rgba(255, 255, 255, 0.03), 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 24px 64px -24px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
@@ -84,7 +90,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
   --font-sans: var(--font-dm-sans);
   --radius-sm: calc(var(--radius) - 3px);
   --radius-md: var(--radius);
@@ -128,39 +133,7 @@ select {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--blue) 22%, transparent);
-}
-
-.marketing {
-  --background: #fbfaf9;
-  --foreground: #201f1d;
-  --card: #ffffff;
-  --card-foreground: #201f1d;
-  --muted: #f4f2ef;
-  --muted-foreground: #706c67;
-  --border: #e7e2dc;
-  --input: #dcd6cf;
-  --primary: #201f1d;
-  --primary-foreground: #ffffff;
-  --accent: #f0ede9;
-  --accent-foreground: #201f1d;
-  --orange: #e16540;
-  --orange-hover: #d25732;
-  --orange-soft: #fdf0eb;
-  --blue: #006fd6;
-  --blue-soft: #eaf3fc;
-  --green: #237a57;
-  --green-soft: #e9f5ef;
-  --ring: #e16540;
-  --shadow-sm:
-    0 0 0 1px rgba(32, 31, 29, 0.025), 0 1px 2px rgba(32, 31, 29, 0.05),
-    0 6px 18px rgba(32, 31, 29, 0.025);
-  --shadow-lift:
-    0 0 0 1px rgba(32, 31, 29, 0.035), 0 18px 60px rgba(66, 53, 43, 0.1);
-
-  color-scheme: light;
-  background: #fbfaf9;
-  color: #201f1d;
+  background: color-mix(in srgb, var(--green) 22%, transparent);
 }
 
 .text-balance {
@@ -168,19 +141,19 @@ select {
 }
 
 .dot-grid {
-  background-image: radial-gradient(#d9d3cc 0.7px, transparent 0.7px);
+  background-image: radial-gradient(var(--grid-dot) 0.7px, transparent 0.7px);
   background-size: 18px 18px;
 }
 
 .fine-grid {
   background-image:
-    linear-gradient(to right, rgba(98, 85, 74, 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(98, 85, 74, 0.055) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
 .eyebrow {
-  color: var(--orange);
+  color: var(--green);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -189,6 +162,32 @@ select {
 
 .surface-shadow {
   box-shadow: var(--shadow-sm);
+}
+
+/* Auth layout side panel: deep charcoal in light mode, elevated in dark mode. */
+.auth-aside {
+  --aside-text: #f7f5f3;
+  --aside-muted: rgba(247, 245, 243, 0.62);
+  --aside-faint: rgba(247, 245, 243, 0.38);
+  --aside-line: rgba(247, 245, 243, 0.12);
+  background: #242424;
+  background-image:
+    linear-gradient(to right, var(--aside-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--aside-line) 1px, transparent 1px);
+  background-size: 30px 30px;
+  color: var(--aside-text);
+}
+
+.dark .auth-aside {
+  --aside-text: var(--card-foreground);
+  --aside-muted: var(--muted-foreground);
+  --aside-faint: var(--muted-foreground);
+  --aside-line: var(--border);
+  background: var(--card);
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  border-right: 1px solid var(--border);
 }
 
 @keyframes enter-up {
