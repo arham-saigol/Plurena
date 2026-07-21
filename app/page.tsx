@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { AppEntryLink } from "@/components/app-entry-link";
 import { Brand } from "@/components/brand";
+import { FaqList } from "@/components/faq-list";
 import { MarketingDemo } from "@/components/marketing-demo";
 import { Button } from "@/components/ui/button";
 
@@ -61,6 +62,39 @@ const useCases = [
     icon: Package,
     title: "Packaging",
     body: "Compare packaging designs, labels, and visual directions before they reach the shelf.",
+  },
+];
+
+const faqs = [
+  {
+    question: "How should I use synthetic audience results?",
+    answer:
+      "Use Plurena to narrow your options, uncover objections buyers may raise, and choose what to validate next. Plurena provides directional research; it does not replace customer conversations. Confirm high-stakes pricing, legal, or brand decisions with real customers.",
+  },
+  {
+    question: "How does Plurena build my audience?",
+    answer:
+      "You describe the people you need to reach and the context that shapes their choice. Plurena creates distinct synthetic respondents from that brief. Each respondent evaluates your options in isolation.",
+  },
+  {
+    question: "What can I compare in one test?",
+    answer:
+      "Compare two to eight text or image options, including headlines, value propositions, offers, prices, positioning, packaging, and creative concepts. Keep all but one major variable consistent so you can tell what caused the preference.",
+  },
+  {
+    question: "How many respondents do I need?",
+    answer:
+      "Each test supports 20 to 250 respondents. Choose a smaller panel for an early directional read. Use a larger panel when you want to examine how reactions differ across parts of your audience.",
+  },
+  {
+    question: "Do respondents influence one another's answers?",
+    answer:
+      "No. Each respondent judges every option from their own perspective without seeing the other answers. Plurena combines those responses into a ranking, objections, audience differences, and next steps.",
+  },
+  {
+    question: "How do credits and billing work?",
+    answer:
+      "One respondent costs one credit, so a test uses 20 to 250 credits. Your first 25 credits are free. Paid credits start at $10 for 50, never expire, and require no subscription.",
   },
 ];
 
@@ -143,7 +177,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-5xl text-center">
             <p className="eyebrow">How it works</p>
             <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] text-balance sm:text-[2.875rem] lg:whitespace-nowrap">
-              Find your audience&apos;s top choice in 3 steps.
+              Find your audience&apos;s top choice in 3 steps
             </h2>
           </div>
 
@@ -231,7 +265,7 @@ export default function LandingPage() {
           <div className="text-center">
             <p className="eyebrow">Pricing</p>
             <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem] sm:whitespace-nowrap">
-              Pay for respondents, not subscriptions.
+              Pay for respondents, not subscriptions
             </h2>
           </div>
 
@@ -312,6 +346,21 @@ export default function LandingPage() {
                 </AppEntryLink>
               </Button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="faq"
+        className="scroll-mt-24 px-4 py-20 sm:px-6 sm:py-24 lg:px-10"
+      >
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-center text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem]">
+            FAQ
+          </h2>
+
+          <div className="mt-10 sm:mt-12">
+            <FaqList items={faqs} />
           </div>
         </div>
       </section>
