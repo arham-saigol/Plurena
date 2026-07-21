@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { ArrowRight, Coins, FlaskConical, Plus, Sparkles } from "lucide-react";
+import { useCallback } from "react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { TestList } from "@/components/test-list";
@@ -23,6 +24,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
   );
   const user = useQuery(api.users.current);
   const summary = useQuery(api.tests.dashboardSummary, all ? "skip" : {});
+  const loadNextPage = useCallback(() => loadMore(50), [loadMore]);
 
   if (!user || status === "LoadingFirstPage") {
     return <DashboardSkeleton />;
@@ -127,7 +129,13 @@ export function Dashboard({ all = false }: { all?: boolean }) {
             </Link>
           )}
         </div>
-        <TestList tests={visible} showFilters={all} />
+        <TestList
+          tests={visible}
+          showFilters={all}
+          canLoadMore={all && status === "CanLoadMore"}
+          loadingMore={all && status === "LoadingMore"}
+          loadMore={loadNextPage}
+        />
         {all && status !== "Exhausted" && (
           <div className="mt-5 flex justify-center">
             <Button

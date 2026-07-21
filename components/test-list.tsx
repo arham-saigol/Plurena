@@ -7,10 +7,11 @@ import {
   FileText,
   FlaskConical,
   ImageIcon,
+  Loader2,
   Plus,
   Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,12 +38,24 @@ const statusCopy: Record<
 export function TestList({
   tests,
   showFilters = false,
+  canLoadMore = false,
+  loadingMore = false,
+  loadMore,
 }: {
   tests: Array<DashboardTest>;
   showFilters?: boolean;
+  canLoadMore?: boolean;
+  loadingMore?: boolean;
+  loadMore?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const query = search.trim().toLowerCase();
+  const filtering = showFilters && Boolean(query || filter !== "all");
+
+  useEffect(() => {
+    if (filtering && canLoadMore) loadMore?.();
+  }, [canLoadMore, filtering, loadMore]);
 
   if (tests.length === 0) {
     return (
@@ -66,7 +79,6 @@ export function TestList({
     );
   }
 
-  const query = search.trim().toLowerCase();
   const filtered = tests.filter((test) => {
     const matchesSearch =
       !query || `${test.name} ${test.question}`.toLowerCase().includes(query);
@@ -122,11 +134,20 @@ export function TestList({
         </div>
         {filtered.length === 0 ? (
           <div className="px-5 py-14 text-center">
-            <Search className="text-muted-foreground mx-auto size-5" />
-            <p className="mt-3 text-sm font-medium">No matching tests</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Try a different term or status.
-            </p>
+            {filtering && (canLoadMore || loadingMore) ? (
+              <>
+                <Loader2 className="text-muted-foreground mx-auto size-5 animate-spin" />
+                <p className="mt-3 text-sm font-medium">Searching all tests</p>
+              </>
+            ) : (
+              <>
+                <Search className="text-muted-foreground mx-auto size-5" />
+                <p className="mt-3 text-sm font-medium">No matching tests</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Try a different term or status.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           filtered.map((test) => <TestRow key={test._id} test={test} />)
