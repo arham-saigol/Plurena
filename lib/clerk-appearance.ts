@@ -11,6 +11,7 @@ export const clerkAppearance = {
     colorNeutral: "var(--foreground)",
     colorInputBackground: "var(--background)",
     colorInputText: "var(--foreground)",
+    // Keep in sync with --radius in app/globals.css; Clerk needs a literal here.
     borderRadius: "0.625rem",
   },
 };
