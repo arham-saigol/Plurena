@@ -1,373 +1,350 @@
-import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
   Check,
   ChevronRight,
+  FileText,
   ImageIcon,
   MessageSquareText,
-  MousePointer2,
-  Quote,
   Sparkles,
   Target,
   Users,
 } from "lucide-react";
+import { AppEntryLink } from "@/components/app-entry-link";
 import { Brand } from "@/components/brand";
+import { MarketingDemo } from "@/components/marketing-demo";
 import { Button } from "@/components/ui/button";
 
-const decisions = [
-  { icon: MessageSquareText, label: "Headlines & copy" },
-  { icon: Target, label: "Positioning" },
-  { icon: ImageIcon, label: "Visual concepts" },
-  { icon: MousePointer2, label: "Landing-page heroes" },
+const useCases = [
+  {
+    icon: FileText,
+    title: "Copy and headlines",
+    body: "See which promise feels clearest, most credible, and worth acting on.",
+  },
+  {
+    icon: Target,
+    title: "Positioning",
+    body: "Compare ways to frame the same product before the market decides for you.",
+  },
+  {
+    icon: ImageIcon,
+    title: "Creative concepts",
+    body: "Put visual directions in front of a varied panel, not just the loudest stakeholder.",
+  },
+  {
+    icon: MessageSquareText,
+    title: "Offers and landing pages",
+    body: "Surface objections and missing context before you send paid traffic.",
+  },
 ];
 
-const audienceFaces = ["RM", "AK", "SJ", "TL", "NV", "CD", "MP"];
+const steps = [
+  [
+    "01",
+    "Frame one decision",
+    "Add a focused question and the options you are genuinely choosing between.",
+  ],
+  [
+    "02",
+    "Define the audience",
+    "Describe the context, motivations, constraints, and category familiarity that matter.",
+  ],
+  [
+    "03",
+    "Run a varied panel",
+    "Distinct synthetic respondents evaluate independently, then explain their choice.",
+  ],
+  [
+    "04",
+    "Act on the pattern",
+    "Start with the direction, inspect the evidence, and open individual voices when needed.",
+  ],
+];
 
 export default function LandingPage() {
   return (
     <main className="marketing min-h-screen overflow-hidden">
-      <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 sm:px-8">
+      <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-[#fbfaf9]/92 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between px-4 sm:px-6 lg:px-10">
           <Brand />
           <nav
-            className="hidden items-center gap-7 text-sm font-medium md:flex"
+            className="hidden items-center gap-7 text-sm font-medium text-black/55 md:flex"
             aria-label="Main navigation"
           >
-            <a href="#how-it-works" className="hover:text-black/60">
+            <a href="#product" className="transition hover:text-black">
+              Product
+            </a>
+            <a href="#how-it-works" className="transition hover:text-black">
               How it works
             </a>
-            <a href="#use-cases" className="hover:text-black/60">
+            <a href="#use-cases" className="transition hover:text-black">
               Use cases
             </a>
-            <a href="#pricing" className="hover:text-black/60">
+            <a href="#pricing" className="transition hover:text-black">
               Pricing
             </a>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link href="/sign-in">Log in</Link>
+              <AppEntryLink signedOutHref="/sign-in">Log in</AppEntryLink>
             </Button>
-            <Button asChild variant="blue">
-              <Link href="/sign-up">Start with 25 free credits</Link>
+            <Button
+              asChild
+              variant="blue"
+              size="sm"
+              className="sm:h-10 sm:px-4"
+            >
+              <AppEntryLink signedOutHref="/sign-up">Start free</AppEntryLink>
             </Button>
           </div>
         </div>
       </header>
 
-      <section className="relative px-5 pt-24 pb-16 sm:px-8 sm:pt-32 lg:pb-24">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[620px] max-w-6xl bg-[radial-gradient(circle_at_50%_20%,rgba(35,131,226,0.10),transparent_54%)]" />
-        <div className="mx-auto max-w-5xl text-center">
-          <div
-            className="mx-auto mb-7 flex justify-center -space-x-2"
-            aria-label="Audience-specific respondent panel"
-          >
-            {audienceFaces.map((face, index) => (
-              <span
-                key={face}
-                className="grid size-12 place-items-center rounded-full border-[3px] border-white text-xs font-semibold"
-                style={{
-                  background: [
-                    "#f6c453",
-                    "#82c4eb",
-                    "#ee8f72",
-                    "#9ed4b3",
-                    "#c7b4ee",
-                    "#f3b8ce",
-                    "#b7d8d2",
-                  ][index],
-                }}
-              >
-                {face}
-              </span>
-            ))}
+      <section className="relative px-4 pt-20 pb-18 sm:px-6 sm:pt-28 sm:pb-24 lg:px-10">
+        <div className="dot-grid pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[680px] max-w-6xl [mask-image:linear-gradient(to_bottom,black,transparent)] opacity-65" />
+        <div className="pointer-events-none absolute top-0 left-1/2 -z-10 h-[520px] w-[900px] max-w-[95vw] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(225,101,64,0.11),transparent_68%)]" />
+
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-black/[0.07] bg-white px-3 py-1.5 text-xs font-semibold text-black/55 shadow-[var(--shadow-sm)]">
+            <Sparkles className="size-3.5 text-[#e16540]" />
+            Audience research for decisions in motion
           </div>
-          <p className="mb-5 text-sm font-semibold tracking-wide text-[#2383e2]">
-            Synthetic audience research, built for marketing decisions
-          </p>
-          <h1 className="text-[clamp(3.1rem,7.7vw,6.8rem)] leading-[0.94] font-semibold tracking-[-0.07em] text-balance">
-            Find the idea your audience would choose.
+          <h1 className="mt-7 text-[clamp(3.25rem,7vw,6rem)] leading-[0.95] font-extrabold tracking-[-0.065em] text-balance">
+            Know what your audience would choose
+            <span className="relative sm:whitespace-nowrap">
+              {" "}
+              before you ship.
+              <span className="absolute inset-x-0 bottom-[0.04em] -z-10 h-[0.19em] rounded-full bg-[#f4c5b6]" />
+            </span>
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-balance text-black/60 sm:text-xl">
-            Test copy, positioning, and visual concepts with distinct AI
-            respondents shaped around the audience you actually want to reach.
+          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-balance text-black/56 sm:text-xl">
+            Compare copy, positioning, and creative with distinct synthetic
+            respondents shaped around the people you need to reach.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" variant="blue">
-              <Link href="/sign-up">
+            <Button asChild size="lg" variant="blue" className="sm:min-w-52">
+              <AppEntryLink signedOutHref="/sign-up">
                 Create your first test <ArrowRight />
-              </Link>
+              </AppEntryLink>
             </Button>
             <Button
               asChild
               size="lg"
               variant="outline"
-              className="border-black/10 bg-white"
+              className="border-black/10 bg-white sm:min-w-44"
             >
-              <a href="#example">See an example result</a>
+              <a href="#product">Explore a result</a>
             </Button>
           </div>
-          <p className="mt-4 text-xs text-black/45">
-            25 welcome credits · No subscription · Directional evidence, not a
-            crystal ball
+          <p className="mt-4 text-xs text-black/42">
+            25 welcome credits · No card required · Pay only for respondents
           </p>
         </div>
 
         <div
-          id="example"
-          className="mx-auto mt-16 max-w-5xl rounded-2xl border border-black/10 bg-[#f7f7f5] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:p-3"
+          id="product"
+          className="mx-auto mt-16 max-w-5xl scroll-mt-24 sm:mt-20"
         >
-          <div className="overflow-hidden rounded-xl border border-black/10 bg-white text-left">
-            <div className="flex h-11 items-center justify-between border-b border-black/[0.07] px-4 text-xs text-black/50">
-              <span>Spring campaign · Results</span>
-              <span className="rounded bg-[#e9f4ef] px-2 py-1 text-[#26734d]">
-                100 / 100 responses
-              </span>
+          <div className="mb-3 flex items-center justify-center gap-2 text-xs font-semibold text-black/42">
+            <span className="h-px w-8 bg-black/10" />
+            Try the report
+            <span className="h-px w-8 bg-black/10" />
+          </div>
+          <MarketingDemo />
+        </div>
+      </section>
+
+      <section
+        id="how-it-works"
+        className="border-y border-black/[0.07] bg-white px-4 py-20 sm:px-6 sm:py-26 lg:px-10"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl">
+            <p className="eyebrow">From question to direction</p>
+            <h2 className="mt-3 text-4xl leading-[1.02] font-extrabold tracking-[-0.055em] text-balance sm:text-5xl">
+              A clear research flow, without research theatre.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-black/52">
+              Every step keeps the decision visible, so setup stays focused and
+              the report remains easy to trust.
+            </p>
+          </div>
+
+          <ol className="mt-12 grid overflow-hidden rounded-2xl border border-black/[0.08] bg-[#fbfaf9] sm:grid-cols-2 lg:grid-cols-4">
+            {steps.map(([number, title, body]) => (
+              <li
+                key={number}
+                className="group min-h-64 border-b border-black/[0.07] p-6 last:border-b-0 sm:border-r sm:nth-[2]:border-r-0 lg:border-b-0 lg:last:border-r-0 lg:nth-[2]:border-r"
+              >
+                <span className="text-xs font-bold text-[#e16540]">
+                  {number}
+                </span>
+                <h3 className="mt-14 text-lg font-bold tracking-[-0.025em]">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-black/50">{body}</p>
+                <ChevronRight className="mt-5 size-4 text-black/25 transition group-hover:translate-x-1 group-hover:text-black/55" />
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="use-cases" className="px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-18">
+            <div>
+              <p className="eyebrow">Built for the next choice</p>
+              <h2 className="mt-3 text-4xl leading-[1.03] font-extrabold tracking-[-0.055em] text-balance sm:text-5xl">
+                Resolve the debate before it becomes spend.
+              </h2>
+              <p className="mt-5 text-lg leading-8 text-black/52">
+                Plurena is for work that is costly to get wrong and easy to
+                debate from personal taste.
+              </p>
+              <Button asChild variant="outline" className="mt-7 bg-white">
+                <AppEntryLink signedOutHref="/sign-up">
+                  Test a decision <ArrowRight />
+                </AppEntryLink>
+              </Button>
             </div>
-            <div className="grid lg:grid-cols-[230px_1fr]">
-              <aside className="hidden border-r border-black/[0.07] bg-[#fbfbfa] p-3 lg:block">
-                <p className="px-2 py-2 text-xs font-medium text-black/45">
-                  WORKSPACE
-                </p>
-                {[
-                  ["Overview", BarChart3],
-                  ["Responses", Users],
-                  ["Synthesis", Sparkles],
-                ].map(([label, Icon], index) => (
-                  <div
-                    key={String(label)}
-                    className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm ${index === 0 ? "bg-black/[0.055]" : "text-black/55"}`}
-                  >
-                    <Icon className="size-4" /> {String(label)}
-                  </div>
-                ))}
-              </aside>
-              <div className="p-5 sm:p-8">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div>
-                    <p className="text-xs font-semibold tracking-wide text-[#26734d]">
-                      CLEAR WINNER
-                    </p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                      Lead with the outcome
-                    </h2>
-                    <p className="mt-1 text-sm text-black/50">
-                      Option B · 63 votes · strong preference
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-black/[0.08] px-4 py-3 text-center">
-                    <p className="text-2xl font-semibold">63%</p>
-                    <p className="text-xs text-black/45">audience choice</p>
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {useCases.map(({ icon: Icon, title, body }) => (
+                <div
+                  key={title}
+                  className="rounded-2xl border border-black/[0.075] bg-white p-6 shadow-[var(--shadow-sm)]"
+                >
+                  <span className="grid size-10 place-items-center rounded-xl bg-[#f4f2ef]">
+                    <Icon className="size-4.5" />
+                  </span>
+                  <h3 className="mt-10 font-bold tracking-[-0.02em]">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-black/50">{body}</p>
                 </div>
-                <div className="mt-7 space-y-4">
-                  {[
-                    ["B · Lead with the outcome", 63, "#2383e2"],
-                    ["A · Lead with the process", 24, "#a7a7a2"],
-                    ["C · Lead with urgency", 13, "#d0cfca"],
-                  ].map(([label, score, color]) => (
-                    <div key={String(label)}>
-                      <div className="mb-1.5 flex justify-between text-sm">
-                        <span>{label}</span>
-                        <span className="font-medium">{score}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-black/[0.055]">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${score}%`,
-                            background: String(color),
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-20 sm:px-6 sm:pb-28 lg:px-10">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-[#201f1d] text-white shadow-[var(--shadow-lift)]">
+          <div className="grid lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="p-7 sm:p-10 lg:p-14">
+              <p className="text-xs font-bold tracking-[0.1em] text-[#ef805e] uppercase">
+                Designed for comprehension
+              </p>
+              <h2 className="mt-4 text-4xl leading-[1.03] font-extrabold tracking-[-0.055em] text-balance sm:text-5xl">
+                The answer first. The evidence when you need it.
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-7 text-white/55">
+                Results lead with the decision and its strength, then reveal
+                supporting patterns, disagreements, and individual respondent
+                perspectives in layers.
+              </p>
+            </div>
+            <div className="grid gap-px bg-white/10 sm:grid-cols-3 lg:grid-cols-1">
+              {[
+                [
+                  BarChart3,
+                  "Scan",
+                  "One direction and a compact evidence strip.",
+                ],
+                [
+                  Users,
+                  "Understand",
+                  "Audience patterns explain where the result holds.",
+                ],
+                [
+                  MessageSquareText,
+                  "Investigate",
+                  "Open individual voices without losing context.",
+                ],
+              ].map(([Icon, title, body]) => (
+                <div
+                  key={String(title)}
+                  className="bg-[#262522] p-6 sm:p-7 lg:px-10"
+                >
+                  <Icon className="size-5 text-[#ef805e]" />
+                  <p className="mt-4 font-bold">{String(title)}</p>
+                  <p className="mt-1 text-sm leading-6 text-white/48">
+                    {String(body)}
+                  </p>
                 </div>
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-black/[0.07] p-4">
-                    <p className="text-xs font-medium text-black/45">
-                      WHY IT WORKED
-                    </p>
-                    <p className="mt-2 text-sm leading-6">
-                      It made the value concrete before asking readers to
-                      understand the product.
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-black/[0.07] p-4">
-                    <p className="text-xs font-medium text-black/45">
-                      SEGMENT SIGNAL
-                    </p>
-                    <p className="mt-2 text-sm leading-6">
-                      Experienced buyers preferred specificity; newer buyers
-                      wanted one line of context.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       <section
-        id="use-cases"
-        className="border-y border-black/[0.07] bg-[#f7f7f5] px-5 py-20 sm:px-8"
+        id="pricing"
+        className="border-t border-black/[0.07] bg-white px-4 py-20 sm:px-6 sm:py-26 lg:px-10"
       >
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-[#2383e2]">
-              Make the next decision with evidence
-            </p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-[-0.045em] text-balance sm:text-5xl">
-              A fast second opinion before you spend the budget.
+        <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[1fr_420px]">
+          <div>
+            <p className="eyebrow">Simple credits</p>
+            <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.055em] sm:text-5xl">
+              Pay for research, not another subscription.
             </h2>
-            <p className="mt-5 text-lg leading-8 text-black/55">
-              Plurena is designed for the choices that are expensive to get
-              wrong and easy to debate forever.
+            <p className="mt-5 max-w-xl text-lg leading-8 text-black/52">
+              One credit runs one respondent. Choose the panel size that fits
+              the decision, and keep unused credits for later.
             </p>
           </div>
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {decisions.map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="rounded-xl border border-black/[0.08] bg-white p-5"
-              >
-                <Icon className="size-5" />
-                <p className="mt-8 font-medium">{label}</p>
-                <p className="mt-1 text-sm leading-6 text-black/50">
-                  Compare options through the needs, objections, and language of
-                  your target audience.
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="px-5 py-24 sm:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <p className="text-sm font-semibold text-[#2383e2]">
-                How it works
-              </p>
-              <h2 className="mt-3 text-4xl font-semibold tracking-[-0.045em] text-balance sm:text-5xl">
-                The audience comes before the answer.
-              </h2>
-              <p className="mt-5 text-lg leading-8 text-black/55">
-                Generic prompts produce generic feedback. Plurena first builds a
-                varied panel inside your audience boundaries, then asks each
-                respondent independently.
-              </p>
+          <div className="rounded-2xl border border-black/[0.08] bg-[#fbfaf9] p-7 shadow-[var(--shadow-sm)] sm:p-8">
+            <div className="flex items-end gap-2">
+              <span className="text-5xl font-extrabold tracking-[-0.06em]">
+                1
+              </span>
+              <span className="pb-1 text-sm text-black/45">
+                credit / respondent
+              </span>
             </div>
-            <ol className="space-y-2">
-              {[
-                [
-                  "01",
-                  "Define the decision",
-                  "Add your question and two or more text or image options.",
-                ],
-                [
-                  "02",
-                  "Describe the audience",
-                  "Capture context, goals, constraints, and the people the message needs to move.",
-                ],
-                [
-                  "03",
-                  "Run independent responses",
-                  "Distinct personas choose, explain tradeoffs, and record preference confidence.",
-                ],
-                [
-                  "04",
-                  "Act on the patterns",
-                  "See deterministic rankings, objections, segment disagreements, and concrete iterations.",
-                ],
-              ].map(([number, title, description]) => (
-                <li
-                  key={number}
-                  className="group grid grid-cols-[48px_1fr_auto] items-center gap-4 rounded-xl border border-transparent p-4 transition hover:border-black/[0.07] hover:bg-[#f7f7f5]"
-                >
-                  <span className="text-sm text-black/35">{number}</span>
-                  <div>
-                    <p className="font-medium">{title}</p>
-                    <p className="mt-1 text-sm leading-6 text-black/50">
-                      {description}
-                    </p>
-                  </div>
-                  <ChevronRight className="size-4 text-black/25 transition group-hover:translate-x-0.5" />
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 pb-24 sm:px-8">
-        <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl bg-[#1f1f1f] p-7 text-white sm:p-10 lg:col-span-2">
-            <Quote className="size-7 text-white/35" />
-            <p className="mt-10 max-w-2xl text-2xl leading-10 font-medium tracking-[-0.02em] text-balance sm:text-3xl">
-              “The strongest result is not always the loudest option. It is the
-              one whose value survives different motivations and objections.”
-            </p>
-            <p className="mt-8 text-sm text-white/50">
-              What Plurena is designed to surface
-            </p>
-          </div>
-          <div
-            id="pricing"
-            className="rounded-2xl border border-black/[0.08] bg-[#f7f7f5] p-7 sm:p-8"
-          >
-            <p className="text-sm font-semibold">Pay as you go</p>
-            <div className="mt-5 flex items-baseline gap-1">
-              <span className="text-5xl font-semibold tracking-tight">1</span>
-              <span className="text-black/45">credit per respondent</span>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-black/55">
-              No subscription. Purchase credits from $10 and use exactly one
-              credit for every respondent in a test.
-            </p>
-            <ul className="mt-6 space-y-3 text-sm">
+            <ul className="mt-7 space-y-3 text-sm">
               {[
                 "25 welcome credits",
-                "Server-verified credit balance",
-                "Only charged once per test",
+                "No subscription or card to start",
+                "Automatic refunds for failed respondent work",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-4 text-[#26734d]" />
-                  {item}
+                <li key={item} className="flex items-center gap-2.5">
+                  <Check className="size-4 text-[#237a57]" /> {item}
                 </li>
               ))}
             </ul>
-            <Button asChild variant="blue" className="mt-7 w-full">
-              <Link href="/sign-up">Start a test</Link>
+            <Button asChild variant="blue" size="lg" className="mt-7 w-full">
+              <AppEntryLink signedOutHref="/sign-up">
+                Start with 25 credits
+              </AppEntryLink>
             </Button>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-black/[0.07] px-5 py-20 text-center sm:px-8">
+      <section className="border-t border-black/[0.07] px-4 py-20 text-center sm:px-6 sm:py-24 lg:px-10">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-4xl font-semibold tracking-[-0.05em] text-balance sm:text-6xl">
+          <p className="eyebrow">The next decision is waiting</p>
+          <h2 className="mt-4 text-4xl leading-[1.02] font-extrabold tracking-[-0.06em] text-balance sm:text-6xl">
             Bring the audience into the room.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-black/55">
-            Get rapid, directional feedback before the next campaign, redesign,
-            or positioning decision.
+          <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-black/50">
+            Get rapid directional evidence before the campaign, redesign, or
+            positioning decision ships.
           </p>
           <Button asChild size="lg" variant="blue" className="mt-8">
-            <Link href="/sign-up">
+            <AppEntryLink signedOutHref="/sign-up">
               Create your first test <ArrowRight />
-            </Link>
+            </AppEntryLink>
           </Button>
         </div>
       </section>
 
-      <footer className="border-t border-black/[0.07] px-5 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-black/45 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="border-t border-black/[0.07] px-4 py-8 sm:px-6 lg:px-10">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-black/42 sm:flex-row sm:items-center sm:justify-between">
           <Brand />
           <p>
-            Directional synthetic research. Validate important decisions with
+            Directional synthetic research. Validate high-stakes decisions with
             real customers too.
           </p>
         </div>

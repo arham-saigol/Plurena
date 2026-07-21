@@ -7,11 +7,13 @@ import { useMutation, useQuery } from "convex/react";
 import {
   AlertTriangle,
   ArrowLeft,
+  BarChart3,
   CheckCircle2,
   ChevronRight,
   CircleDashed,
   FilePenLine,
   Loader2,
+  MessagesSquare,
   Search,
   Sparkles,
   Trash2,
@@ -76,6 +78,16 @@ const activeStatuses = new Set<Doc<"tests">["status"]>([
   "running_respondents",
   "synthesizing",
 ]);
+
+const detailStatusCopy: Record<Doc<"tests">["status"], string> = {
+  draft: "Saved draft",
+  preparing_personas: "Building audience",
+  running_respondents: "Collecting responses",
+  synthesizing: "Finding patterns",
+  completed: "Decision ready",
+  partially_failed: "Partial decision",
+  failed: "Needs attention",
+};
 
 function OptionPreview({ option }: { option: TestDetails["options"][number] }) {
   return (
@@ -189,7 +201,7 @@ function RespondentDialog({
       onOpenChange={(open) => !open && onClose()}
     >
       {response && (
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogTitle>{response.persona.displayName}</DialogTitle>
           <DialogDescription>{response.persona.background}</DialogDescription>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -254,6 +266,21 @@ function RespondentDialog({
               </p>
             )}
           </div>
+          {response.comparisons.length > 0 && (
+            <div className="mt-5">
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                How the options compared
+              </p>
+              <ul className="mt-2 space-y-2 text-sm leading-6">
+                {response.comparisons.map((comparison) => (
+                  <li key={comparison} className="flex gap-2">
+                    <span className="text-[var(--orange)]">→</span>
+                    {comparison}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </DialogContent>
       )}
     </Dialog>
@@ -361,6 +388,9 @@ function ResponsesTable({ testId }: { testId: Id<"tests"> }) {
 
 function Results({ details }: { details: TestDetails }) {
   const report = details.report;
+  const [section, setSection] = useState<
+    "decision" | "audience" | "respondents"
+  >("decision");
   if (!report) return <Skeleton className="h-[480px]" />;
   const optionById = new Map(
     details.options.map((option) => [option._id, option]),
@@ -373,13 +403,52 @@ function Results({ details }: { details: TestDetails }) {
     report.confidenceDistribution.medium +
     report.confidenceDistribution.high;
   return (
-    <div className="space-y-9">
-      <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+    <div className="space-y-7">
+      <nav
+        className="bg-card flex w-full gap-1 overflow-x-auto rounded-xl border p-1 shadow-[var(--shadow-sm)] sm:w-fit"
+        aria-label="Result sections"
+      >
+        {[
+          { id: "decision" as const, label: "Decision", icon: BarChart3 },
+          { id: "audience" as const, label: "Audience", icon: Users },
+          {
+            id: "respondents" as const,
+            label: "Respondents",
+            icon: MessagesSquare,
+          },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setSection(id)}
+            aria-current={section === id ? "page" : undefined}
+            className={cn(
+              "text-muted-foreground inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-semibold transition",
+              section === id &&
+                "bg-accent text-foreground shadow-[0_1px_1px_rgba(0,0,0,0.04)]",
+            )}
+          >
+            <Icon className="size-4" /> {label}
+            {id === "respondents" && (
+              <span className="bg-background rounded px-1.5 py-0.5 text-[10px] tabular-nums">
+                {report.successfulResponses}
+              </span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      <section
+        className={cn(
+          "animate-enter grid gap-4 lg:grid-cols-[1.25fr_0.75fr]",
+          section !== "decision" && "hidden",
+        )}
+      >
         <Card className="p-6 sm:p-8">
           <Badge tone={report.outcomeLabel === "Winner" ? "green" : "amber"}>
             {report.outcomeLabel}
           </Badge>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight">
+          <h2 className="mt-3 text-3xl font-bold tracking-[-0.045em] text-balance">
             {winningOption
               ? `${winningOption.label} leads`
               : report.outcomeLabel}
@@ -479,7 +548,12 @@ function Results({ details }: { details: TestDetails }) {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section
+        className={cn(
+          "grid gap-4 lg:grid-cols-2",
+          section !== "decision" && "hidden",
+        )}
+      >
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-[var(--blue)]" />
@@ -507,7 +581,7 @@ function Results({ details }: { details: TestDetails }) {
         </Card>
       </section>
 
-      <section>
+      <section className={cn(section !== "decision" && "hidden")}>
         <h2 className="mb-3 font-semibold">How to improve every option</h2>
         <div className="grid gap-3 lg:grid-cols-2">
           {report.optionInsights.map((insight) => {
@@ -553,39 +627,55 @@ function Results({ details }: { details: TestDetails }) {
         </div>
       </section>
 
-      {(report.segments.length > 0 || report.disagreements.length > 0) && (
-        <section className="grid gap-4 lg:grid-cols-2">
+      {section === "audience" && (
+        <section className="animate-enter grid gap-4 lg:grid-cols-2">
           <Card className="p-5">
             <div className="flex items-center gap-2">
               <Users className="size-4" />
               <h2 className="font-semibold">Audience patterns</h2>
             </div>
             <div className="mt-4 space-y-4">
-              {report.segments.map((segment) => (
-                <div key={segment.name}>
-                  <p className="text-sm font-medium">{segment.name}</p>
-                  <p className="text-muted-foreground mt-1 text-sm leading-6">
-                    {segment.pattern}
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Evidence: {segment.evidence}
-                  </p>
-                </div>
-              ))}
+              {report.segments.length > 0 ? (
+                report.segments.map((segment) => (
+                  <div key={segment.name}>
+                    <p className="text-sm font-medium">{segment.name}</p>
+                    <p className="text-muted-foreground mt-1 text-sm leading-6">
+                      {segment.pattern}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Evidence: {segment.evidence}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-sm leading-6">
+                  No meaningful audience split appeared in this panel.
+                </p>
+              )}
             </div>
           </Card>
           <Card className="p-5">
             <h2 className="font-semibold">Where the audience disagreed</h2>
             <ul className="mt-4 space-y-3 text-sm leading-6">
-              {report.disagreements.map((item) => (
-                <li key={item}>• {item}</li>
-              ))}
+              {report.disagreements.length > 0 ? (
+                report.disagreements.map((item) => <li key={item}>• {item}</li>)
+              ) : (
+                <li className="text-muted-foreground">
+                  Respondents were broadly aligned; no strong disagreement
+                  pattern was detected.
+                </li>
+              )}
             </ul>
           </Card>
         </section>
       )}
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section
+        className={cn(
+          "grid gap-4 lg:grid-cols-2",
+          section !== "decision" && "hidden",
+        )}
+      >
         <Card className="p-5">
           <h2 className="font-semibold">Messaging implications</h2>
           <ul className="mt-4 space-y-3 text-sm leading-6">
@@ -604,9 +694,18 @@ function Results({ details }: { details: TestDetails }) {
         </Card>
       </section>
 
-      <ResponsesTable testId={details.test._id} />
+      {section === "respondents" && (
+        <div className="animate-enter">
+          <ResponsesTable testId={details.test._id} />
+        </div>
+      )}
 
-      <section className="bg-muted/50 rounded-lg border p-5">
+      <section
+        className={cn(
+          "bg-muted/50 rounded-xl border p-5",
+          section !== "decision" && "hidden",
+        )}
+      >
         <p className="text-sm font-medium">Read this result with care</p>
         <ul className="text-muted-foreground mt-2 space-y-1 text-xs leading-5">
           {report.limitations.map((item) => (
@@ -648,14 +747,14 @@ export function TestDetail({ testId }: { testId: Id<"tests"> }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <Button asChild variant="ghost" size="sm" className="-ml-3">
         <Link href="/app/tests">
           <ArrowLeft /> All tests
         </Link>
       </Button>
       <PageHeader
-        eyebrow={details.test.status.replaceAll("_", " ")}
+        eyebrow={detailStatusCopy[details.test.status]}
         title={details.test.name}
         description={details.test.question}
         actions={
@@ -679,6 +778,30 @@ export function TestDetail({ testId }: { testId: Id<"tests"> }) {
           ) : undefined
         }
       />
+      {details.test.status !== "draft" && (
+        <div className="bg-card grid overflow-hidden rounded-xl border shadow-[var(--shadow-sm)] sm:grid-cols-3 sm:divide-x">
+          {[
+            ["Panel", `${details.test.respondentCount} respondents`],
+            [
+              "Options",
+              `${details.options.length} ${details.test.optionType} choices`,
+            ],
+            ["Audience", details.test.audience],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="min-w-0 border-b px-4 py-3.5 last:border-b-0 sm:border-b-0 sm:px-5"
+            >
+              <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                {label}
+              </p>
+              <p className="mt-1 truncate text-sm font-medium" title={value}>
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       {details.test.status === "draft" && (
         <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
           <div className="space-y-3">

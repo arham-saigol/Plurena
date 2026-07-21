@@ -14,7 +14,15 @@ const isClientConfigured = Boolean(convex && clerkKey);
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const content = isClientConfigured ? (
-    <ClerkProvider publishableKey={clerkKey}>
+    <ClerkProvider
+      publishableKey={clerkKey}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/app"
+      signUpFallbackRedirectUrl="/app"
+      signInForceRedirectUrl="/app"
+      signUpForceRedirectUrl="/app"
+    >
       <ConvexProviderWithClerk client={convex!} useAuth={useAuth}>
         {children}
       </ConvexProviderWithClerk>

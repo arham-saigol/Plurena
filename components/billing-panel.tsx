@@ -55,7 +55,7 @@ export function BillingPanel() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[0.75fr_1.65fr]">
-        <Card className="overflow-hidden border-blue-500/20 bg-[linear-gradient(145deg,rgba(35,131,226,0.11),transparent_60%)]">
+        <Card className="overflow-hidden border-[var(--orange)]/18 bg-[linear-gradient(145deg,var(--orange-soft),transparent_68%)]">
           <CardHeader>
             <CardDescription>Available credits</CardDescription>
             <CardTitle className="text-4xl tabular-nums">
@@ -105,7 +105,8 @@ export function BillingPanel() {
                       onClick={() => setSelectedOptionKey(option.key)}
                       className={cn(
                         "hover:border-foreground/30 relative rounded-lg border p-4 text-left transition",
-                        highestBonus && "border-blue-500/30 bg-blue-500/[0.04]",
+                        highestBonus &&
+                          "border-[var(--orange)]/25 bg-[var(--orange-soft)]/55",
                         selected &&
                           "border-[var(--blue)] ring-2 ring-[var(--blue)]/15",
                       )}

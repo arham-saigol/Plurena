@@ -8,15 +8,14 @@ const clerkConfigured = Boolean(
 const protectedWorkspace = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/app" || pathname.startsWith("/app/")) {
-    await auth.protect();
+    await auth.protect({
+      unauthenticatedUrl: new URL("/sign-in", request.url).toString(),
+    });
   }
 });
 
 export default clerkConfigured ? protectedWorkspace : () => NextResponse.next();
 
 export const config = {
-  matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/app/:path*"],
 };

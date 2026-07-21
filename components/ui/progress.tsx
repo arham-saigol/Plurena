@@ -9,14 +9,14 @@ export function Progress({
   return (
     <ProgressPrimitive.Root
       className={cn(
-        "bg-accent h-1.5 w-full overflow-hidden rounded-full",
+        "bg-accent ring-foreground/[0.03] h-1.5 w-full overflow-hidden rounded-full ring-1",
         className,
       )}
       value={value}
       {...props}
     >
       <ProgressPrimitive.Indicator
-        className="bg-foreground h-full transition-transform duration-500"
+        className="h-full bg-[var(--blue)] transition-transform duration-700"
         style={{
           transform: `translateX(-${100 - Math.max(0, Math.min(100, value ?? 0))}%)`,
         }}

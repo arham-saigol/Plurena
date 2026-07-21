@@ -10,18 +10,14 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+    <header className="animate-enter flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        {eyebrow && (
-          <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide">
-            {eyebrow.toUpperCase()}
-          </p>
-        )}
-        <h1 className="text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
+        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+        <h1 className="text-3xl font-bold tracking-[-0.045em] text-balance sm:text-4xl">
           {title}
         </h1>
         {description && (
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6">
+          <p className="text-muted-foreground mt-2.5 max-w-2xl text-sm leading-6 sm:text-[15px]">
             {description}
           </p>
         )}

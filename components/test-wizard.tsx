@@ -60,6 +60,12 @@ type DraftDetails = {
 };
 
 const steps = ["Test", "Options", "Audience", "Review"];
+const stepDetails = [
+  "Frame the decision",
+  "Add alternatives",
+  "Shape the panel",
+  "Confirm and launch",
+];
 
 function randomKey() {
   return typeof crypto !== "undefined"
@@ -372,11 +378,11 @@ function TestWizardForm({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-7">
+    <div className="mx-auto max-w-5xl space-y-8">
       <PageHeader
-        eyebrow={testId ? "Draft" : "New test"}
-        title={testId ? "Continue your test" : "What do you want to learn?"}
-        description="The strongest studies start with a focused question and a specific audience."
+        eyebrow={testId ? "Saved draft" : "New test"}
+        title={testId ? "Continue the decision" : "What do you need to decide?"}
+        description="Keep the question focused. Plurena will make the audience varied, not the brief vague."
         actions={
           <Button
             variant="outline"
@@ -388,426 +394,502 @@ function TestWizardForm({
         }
       />
 
-      <ol className="grid grid-cols-4 gap-1" aria-label="Test creation steps">
-        {steps.map((label, index) => (
-          <li key={label}>
-            <button
-              onClick={() => index <= step && setStep(index)}
-              className="w-full text-left"
-              aria-current={step === index ? "step" : undefined}
-            >
-              <span
-                className={cn(
-                  "mb-2 block h-1 rounded-full",
-                  index <= step ? "bg-foreground" : "bg-accent",
-                )}
-              />
-              <span
-                className={cn(
-                  "text-xs",
-                  index === step ? "font-medium" : "text-muted-foreground",
-                )}
-              >
-                {index + 1}. {label}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      <Card className="p-5 sm:p-7">
-        {step === 0 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold">Frame the test</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Name the decision and ask one question the panel can answer
-                clearly.
+      <div className="grid gap-6 md:grid-cols-[210px_minmax(0,1fr)] lg:gap-8">
+        <aside className="hidden md:block">
+          <div className="sticky top-26 space-y-5">
+            <ol className="space-y-1" aria-label="Test creation steps">
+              {steps.map((label, index) => (
+                <li key={label}>
+                  <button
+                    onClick={() => index <= step && setStep(index)}
+                    disabled={index > step}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition",
+                      index === step
+                        ? "bg-card shadow-[var(--shadow-sm)]"
+                        : "text-muted-foreground hover:bg-accent/55",
+                    )}
+                    aria-current={step === index ? "step" : undefined}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-bold",
+                        index < step &&
+                          "border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]",
+                        index === step &&
+                          "border-[var(--orange)] bg-[var(--orange)] text-white",
+                      )}
+                    >
+                      {index < step ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span>
+                      <span className="text-foreground block text-sm font-semibold">
+                        {label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px]">
+                        {stepDetails[index]}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <div className="bg-card rounded-xl border p-4 shadow-[var(--shadow-sm)]">
+              <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                Available
+              </p>
+              <p className="mt-1 text-sm font-bold">
+                {formatCredits(currentUser.creditBalance)}
+              </p>
+              <p className="text-muted-foreground mt-1.5 text-[11px] leading-4">
+                One credit runs one respondent. Nothing is charged until launch.
               </p>
             </div>
-            <Field
-              label="Test name"
-              htmlFor="test-name"
-              hint={`${name.length}/120`}
-            >
-              <Input
-                id="test-name"
-                maxLength={120}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Spring campaign headline"
-                autoFocus
-              />
-            </Field>
-            <Field
-              label="Question"
-              htmlFor="question"
-              hint={`${question.length}/500`}
-            >
-              <Textarea
-                id="question"
-                maxLength={500}
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="Which hero message would make you most interested in learning more, and why?"
-              />
-            </Field>
-            <Field label="Option format">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  {
-                    type: "text" as const,
-                    icon: FileText,
-                    title: "Text",
-                    description: "Copy, headlines, offers, or positioning",
-                  },
-                  {
-                    type: "image" as const,
-                    icon: ImageIcon,
-                    title: "Images",
-                    description: "Creative, layouts, or visual concepts",
-                  },
-                ].map(({ type, icon: Icon, title, description }) => (
-                  <button
-                    key={type}
-                    onClick={() => setType(type)}
+          </div>
+        </aside>
+
+        <div className="min-w-0 space-y-5">
+          <ol
+            className="grid grid-cols-4 gap-1 md:hidden"
+            aria-label="Test creation steps"
+          >
+            {steps.map((label, index) => (
+              <li key={label}>
+                <button
+                  onClick={() => index <= step && setStep(index)}
+                  className="w-full text-left"
+                  aria-current={step === index ? "step" : undefined}
+                >
+                  <span
                     className={cn(
-                      "hover:bg-accent/50 rounded-lg border p-4 text-left transition",
-                      optionType === type &&
-                        "border-foreground ring-foreground ring-1",
+                      "mb-2 block h-1 rounded-full",
+                      index <= step ? "bg-[var(--orange)]" : "bg-accent",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-[11px]",
+                      index === step
+                        ? "font-semibold"
+                        : "text-muted-foreground",
                     )}
                   >
-                    <Icon className="size-5" />
-                    <p className="mt-5 text-sm font-medium">{title}</p>
-                    <p className="text-muted-foreground mt-1 text-xs leading-5">
-                      {description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </Field>
-          </div>
-        )}
+                    {index + 1}. {label}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
 
-        {step === 1 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold">Add the options</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Use two to eight distinct alternatives. Order is preserved in
-                the immutable test snapshot.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {options.map((option, index) => (
-                <div key={option.key} className="rounded-lg border p-3 sm:p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-accent grid size-6 shrink-0 place-items-center rounded text-xs font-medium">
-                      {index + 1}
-                    </span>
-                    <Input
-                      aria-label={`Label for option ${index + 1}`}
-                      value={option.label}
-                      maxLength={80}
-                      onChange={(event) =>
-                        updateOption(option.key, { label: event.target.value })
-                      }
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Move option up"
-                      disabled={index === 0}
-                      onClick={() => moveOption(index, -1)}
-                    >
-                      <ArrowUp />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Move option down"
-                      disabled={index === options.length - 1}
-                      onClick={() => moveOption(index, 1)}
-                    >
-                      <ArrowDown />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Remove option"
-                      disabled={options.length <= 2}
-                      onClick={() => {
-                        revokePreviewUrl(option.previewUrl);
-                        releaseUpload(option.assetId);
-                        setOptions((current) =>
-                          current.filter((item) => item.key !== option.key),
-                        );
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
+          <Card className="p-5 sm:p-7 lg:p-8">
+            {step === 0 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold">Frame the test</h2>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Name the decision and ask one question the panel can answer
+                    clearly.
+                  </p>
+                </div>
+                <Field
+                  label="Test name"
+                  htmlFor="test-name"
+                  hint={`${name.length}/120`}
+                >
+                  <Input
+                    id="test-name"
+                    maxLength={120}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Spring campaign headline"
+                    autoFocus
+                  />
+                </Field>
+                <Field
+                  label="Question"
+                  htmlFor="question"
+                  hint={`${question.length}/500`}
+                >
+                  <Textarea
+                    id="question"
+                    maxLength={500}
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="Which hero message would make you most interested in learning more, and why?"
+                  />
+                </Field>
+                <Field label="Option format">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      {
+                        type: "text" as const,
+                        icon: FileText,
+                        title: "Text",
+                        description: "Copy, headlines, offers, or positioning",
+                      },
+                      {
+                        type: "image" as const,
+                        icon: ImageIcon,
+                        title: "Images",
+                        description: "Creative, layouts, or visual concepts",
+                      },
+                    ].map(({ type, icon: Icon, title, description }) => (
+                      <button
+                        key={type}
+                        onClick={() => setType(type)}
+                        className={cn(
+                          "hover:bg-accent/50 rounded-lg border p-4 text-left transition",
+                          optionType === type &&
+                            "border-foreground ring-foreground ring-1",
+                        )}
+                      >
+                        <Icon className="size-5" />
+                        <p className="mt-5 text-sm font-medium">{title}</p>
+                        <p className="text-muted-foreground mt-1 text-xs leading-5">
+                          {description}
+                        </p>
+                      </button>
+                    ))}
                   </div>
-                  {optionType === "text" ? (
-                    <Textarea
-                      className="mt-3 min-h-28"
-                      aria-label={`Text for option ${index + 1}`}
-                      value={option.text}
-                      maxLength={5_000}
-                      onChange={(event) =>
-                        updateOption(option.key, { text: event.target.value })
-                      }
-                      placeholder="Paste the exact copy respondents should evaluate…"
-                    />
-                  ) : (
-                    <div className="mt-3">
-                      {option.previewUrl ? (
-                        <div className="bg-muted relative overflow-hidden rounded-md border">
-                          <Image
-                            src={option.previewUrl}
-                            alt={option.label || `Option ${index + 1}`}
-                            width={960}
-                            height={540}
-                            unoptimized
-                            className="aspect-video w-full object-contain"
-                          />
-                          <label className="bg-background/95 absolute right-2 bottom-2 inline-flex h-8 cursor-pointer items-center gap-2 rounded-md px-3 text-xs font-medium shadow-sm">
-                            <Upload className="size-3.5" /> Replace
-                            <input
-                              type="file"
-                              className="sr-only"
-                              accept="image/jpeg,image/png,image/webp"
-                              onChange={(event) =>
-                                void uploadImage(option, event)
-                              }
-                            />
-                          </label>
-                        </div>
+                </Field>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold">Add the options</h2>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Use two to eight distinct alternatives. Order is preserved
+                    in the immutable test snapshot.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {options.map((option, index) => (
+                    <div
+                      key={option.key}
+                      className="rounded-lg border p-3 sm:p-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="bg-accent grid size-6 shrink-0 place-items-center rounded text-xs font-medium">
+                          {index + 1}
+                        </span>
+                        <Input
+                          aria-label={`Label for option ${index + 1}`}
+                          value={option.label}
+                          maxLength={80}
+                          onChange={(event) =>
+                            updateOption(option.key, {
+                              label: event.target.value,
+                            })
+                          }
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Move option up"
+                          disabled={index === 0}
+                          onClick={() => moveOption(index, -1)}
+                        >
+                          <ArrowUp />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Move option down"
+                          disabled={index === options.length - 1}
+                          onClick={() => moveOption(index, 1)}
+                        >
+                          <ArrowDown />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Remove option"
+                          disabled={options.length <= 2}
+                          onClick={() => {
+                            revokePreviewUrl(option.previewUrl);
+                            releaseUpload(option.assetId);
+                            setOptions((current) =>
+                              current.filter((item) => item.key !== option.key),
+                            );
+                          }}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                      {optionType === "text" ? (
+                        <Textarea
+                          className="mt-3 min-h-28"
+                          aria-label={`Text for option ${index + 1}`}
+                          value={option.text}
+                          maxLength={5_000}
+                          onChange={(event) =>
+                            updateOption(option.key, {
+                              text: event.target.value,
+                            })
+                          }
+                          placeholder="Paste the exact copy respondents should evaluate…"
+                        />
                       ) : (
-                        <label className="bg-muted/40 hover:bg-muted grid min-h-40 cursor-pointer place-items-center rounded-md border border-dashed text-center">
-                          <span>
-                            {option.uploading ? (
-                              <Loader2 className="mx-auto size-5 animate-spin" />
-                            ) : (
-                              <Upload className="mx-auto size-5" />
-                            )}
-                            <span className="mt-2 block text-sm font-medium">
-                              {option.uploading ? "Uploading…" : "Upload image"}
-                            </span>
-                            <span className="text-muted-foreground mt-1 block text-xs">
-                              JPEG, PNG, or WebP · up to 8 MB
-                            </span>
-                          </span>
-                          <input
-                            type="file"
-                            className="sr-only"
-                            accept="image/jpeg,image/png,image/webp"
-                            disabled={option.uploading}
-                            onChange={(event) =>
-                              void uploadImage(option, event)
-                            }
-                          />
-                        </label>
+                        <div className="mt-3">
+                          {option.previewUrl ? (
+                            <div className="bg-muted relative overflow-hidden rounded-md border">
+                              <Image
+                                src={option.previewUrl}
+                                alt={option.label || `Option ${index + 1}`}
+                                width={960}
+                                height={540}
+                                unoptimized
+                                className="aspect-video w-full object-contain"
+                              />
+                              <label className="bg-background/95 absolute right-2 bottom-2 inline-flex h-8 cursor-pointer items-center gap-2 rounded-md px-3 text-xs font-medium shadow-sm">
+                                <Upload className="size-3.5" /> Replace
+                                <input
+                                  type="file"
+                                  className="sr-only"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  onChange={(event) =>
+                                    void uploadImage(option, event)
+                                  }
+                                />
+                              </label>
+                            </div>
+                          ) : (
+                            <label className="bg-muted/40 hover:bg-muted grid min-h-40 cursor-pointer place-items-center rounded-md border border-dashed text-center">
+                              <span>
+                                {option.uploading ? (
+                                  <Loader2 className="mx-auto size-5 animate-spin" />
+                                ) : (
+                                  <Upload className="mx-auto size-5" />
+                                )}
+                                <span className="mt-2 block text-sm font-medium">
+                                  {option.uploading
+                                    ? "Uploading…"
+                                    : "Upload image"}
+                                </span>
+                                <span className="text-muted-foreground mt-1 block text-xs">
+                                  JPEG, PNG, or WebP · up to 8 MB
+                                </span>
+                              </span>
+                              <input
+                                type="file"
+                                className="sr-only"
+                                accept="image/jpeg,image/png,image/webp"
+                                disabled={option.uploading}
+                                onChange={(event) =>
+                                  void uploadImage(option, event)
+                                }
+                              />
+                            </label>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-            {options.length < 8 && (
+                {options.length < 8 && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setOptions((current) => [
+                        ...current,
+                        newOption(current.length),
+                      ])
+                    }
+                  >
+                    <Plus /> Add option
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="rounded-lg border border-[var(--blue)]/20 bg-[var(--blue-soft)] p-4">
+                  <div className="flex gap-3">
+                    <Users className="mt-0.5 size-5 shrink-0 text-[var(--blue)]" />
+                    <div>
+                      <h2 className="font-semibold">
+                        Audience quality drives answer quality
+                      </h2>
+                      <p className="text-muted-foreground mt-1 text-sm leading-6">
+                        Describe the shared situation and meaningful differences
+                        inside the audience. Avoid broad labels when
+                        motivations, constraints, or category familiarity matter
+                        more.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Field
+                  label="Target audience"
+                  htmlFor="audience"
+                  hint={`${audience.length}/4000`}
+                >
+                  <Textarea
+                    id="audience"
+                    className="min-h-44"
+                    maxLength={4_000}
+                    value={audience}
+                    onChange={(event) => setAudience(event.target.value)}
+                    placeholder="Growth-stage B2B SaaS marketing leaders who own pipeline targets, have tried attribution tools before, and are skeptical of long implementation cycles. Include a mix of hands-on operators and team leads…"
+                  />
+                </Field>
+                <Field
+                  label="Additional product or situation context"
+                  htmlFor="context"
+                  hint="Optional"
+                >
+                  <Textarea
+                    id="context"
+                    maxLength={4_000}
+                    value={context}
+                    onChange={(event) => setContext(event.target.value)}
+                    placeholder="What the product does, price point, channel, campaign goal, constraints, or anything else needed to make a fair judgment…"
+                  />
+                </Field>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold">Review and launch</h2>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Launching creates an immutable snapshot and charges your
+                    balance once.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Respondents">
+                    <Select
+                      value={respondentCount}
+                      onChange={(event) =>
+                        setRespondentCount(
+                          Number(event.target.value) as RespondentCount,
+                        )
+                      }
+                    >
+                      {configuration.respondentCounts.map((count) => (
+                        <option key={count} value={count}>
+                          {count} respondents — {formatCredits(count)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Respondent model">
+                    <Select
+                      value={respondentModel}
+                      onChange={(event) =>
+                        setRespondentModel(event.target.value as ModelKey)
+                      }
+                    >
+                      {eligibleModels?.map((model) => (
+                        <option key={model.key} value={model.key}>
+                          {model.label}
+                          {model.vision ? " · vision" : ""}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <div className="divide-y rounded-lg border">
+                  {[
+                    ["Test", name],
+                    ["Question", question],
+                    ["Options", `${options.length} ${optionType} options`],
+                    ["Audience", audience],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="grid gap-1 px-4 py-3 sm:grid-cols-[110px_1fr]"
+                    >
+                      <p className="text-muted-foreground text-xs font-medium">
+                        {label}
+                      </p>
+                      <p className="text-sm leading-6">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border p-4">
+                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <WalletCards className="size-4" /> Available credits
+                    </div>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {formatCredits(currentUser.creditBalance)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <Sparkles className="size-4" /> Test cost
+                    </div>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {formatCredits(creditCost)}
+                    </p>
+                  </div>
+                </div>
+                {currentUser.creditBalance < creditCost && (
+                  <div className="rounded-lg border border-[var(--amber)]/25 bg-[var(--amber-soft)] p-4 text-sm">
+                    <p className="font-medium">
+                      You do not have enough credits to launch this test.
+                    </p>
+                    <Link
+                      href="/app/billing"
+                      className="mt-1 inline-flex text-[var(--amber)] underline underline-offset-2"
+                    >
+                      Get credits to continue
+                    </Link>
+                  </div>
+                )}
+                <div className="bg-muted text-muted-foreground flex items-start gap-2 rounded-lg p-3 text-xs leading-5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-[var(--green)]" />{" "}
+                  Credit cost, respondent count, question, options, audience,
+                  context, and model routing are frozen when execution starts.
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <div className="bg-background/94 sticky bottom-20 z-10 flex items-center justify-between rounded-xl border p-2 shadow-[var(--shadow-sm)] backdrop-blur-xl md:bottom-4">
+            <Button
+              variant="ghost"
+              disabled={step === 0 || saving}
+              onClick={() => setStep((current) => current - 1)}
+            >
+              <ArrowLeft /> Back
+            </Button>
+            {step < steps.length - 1 ? (
               <Button
-                variant="outline"
-                onClick={() =>
-                  setOptions((current) => [
-                    ...current,
-                    newOption(current.length),
-                  ])
+                variant="blue"
+                onClick={() => setStep((current) => current + 1)}
+                disabled={
+                  (step === 0 && (!name.trim() || !question.trim())) ||
+                  (step === 1 && !optionsComplete)
                 }
               >
-                <Plus /> Add option
+                Continue <ArrowRight />
+              </Button>
+            ) : (
+              <Button
+                variant="blue"
+                size="lg"
+                onClick={() => void launch()}
+                disabled={
+                  saving || !complete || currentUser.creditBalance < creditCost
+                }
+              >
+                {saving ? <Loader2 className="animate-spin" /> : <Sparkles />}{" "}
+                Launch for {formatCredits(creditCost)}
               </Button>
             )}
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-6">
-            <div className="rounded-lg border border-[var(--blue)]/20 bg-[var(--blue-soft)] p-4">
-              <div className="flex gap-3">
-                <Users className="mt-0.5 size-5 shrink-0 text-[var(--blue)]" />
-                <div>
-                  <h2 className="font-semibold">
-                    Audience quality drives answer quality
-                  </h2>
-                  <p className="text-muted-foreground mt-1 text-sm leading-6">
-                    Describe the shared situation and meaningful differences
-                    inside the audience. Avoid broad labels when motivations,
-                    constraints, or category familiarity matter more.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <Field
-              label="Target audience"
-              htmlFor="audience"
-              hint={`${audience.length}/4000`}
-            >
-              <Textarea
-                id="audience"
-                className="min-h-44"
-                maxLength={4_000}
-                value={audience}
-                onChange={(event) => setAudience(event.target.value)}
-                placeholder="Growth-stage B2B SaaS marketing leaders who own pipeline targets, have tried attribution tools before, and are skeptical of long implementation cycles. Include a mix of hands-on operators and team leads…"
-              />
-            </Field>
-            <Field
-              label="Additional product or situation context"
-              htmlFor="context"
-              hint="Optional"
-            >
-              <Textarea
-                id="context"
-                maxLength={4_000}
-                value={context}
-                onChange={(event) => setContext(event.target.value)}
-                placeholder="What the product does, price point, channel, campaign goal, constraints, or anything else needed to make a fair judgment…"
-              />
-            </Field>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold">Review and launch</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Launching creates an immutable snapshot and charges your balance
-                once.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Respondents">
-                <Select
-                  value={respondentCount}
-                  onChange={(event) =>
-                    setRespondentCount(
-                      Number(event.target.value) as RespondentCount,
-                    )
-                  }
-                >
-                  {configuration.respondentCounts.map((count) => (
-                    <option key={count} value={count}>
-                      {count} respondents — {formatCredits(count)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Respondent model">
-                <Select
-                  value={respondentModel}
-                  onChange={(event) =>
-                    setRespondentModel(event.target.value as ModelKey)
-                  }
-                >
-                  {eligibleModels?.map((model) => (
-                    <option key={model.key} value={model.key}>
-                      {model.label}
-                      {model.vision ? " · vision" : ""}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="divide-y rounded-lg border">
-              {[
-                ["Test", name],
-                ["Question", question],
-                ["Options", `${options.length} ${optionType} options`],
-                ["Audience", audience],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="grid gap-1 px-4 py-3 sm:grid-cols-[110px_1fr]"
-                >
-                  <p className="text-muted-foreground text-xs font-medium">
-                    {label}
-                  </p>
-                  <p className="text-sm leading-6">{value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border p-4">
-                <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <WalletCards className="size-4" /> Available credits
-                </div>
-                <p className="mt-2 text-2xl font-semibold">
-                  {formatCredits(currentUser.creditBalance)}
-                </p>
-              </div>
-              <div className="rounded-lg border p-4">
-                <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Sparkles className="size-4" /> Test cost
-                </div>
-                <p className="mt-2 text-2xl font-semibold">
-                  {formatCredits(creditCost)}
-                </p>
-              </div>
-            </div>
-            {currentUser.creditBalance < creditCost && (
-              <div className="rounded-lg border border-[var(--amber)]/25 bg-[var(--amber-soft)] p-4 text-sm">
-                <p className="font-medium">
-                  You do not have enough credits to launch this test.
-                </p>
-                <Link
-                  href="/app/billing"
-                  className="mt-1 inline-flex text-[var(--amber)] underline underline-offset-2"
-                >
-                  Get credits to continue
-                </Link>
-              </div>
-            )}
-            <div className="bg-muted text-muted-foreground flex items-start gap-2 rounded-lg p-3 text-xs leading-5">
-              <Check className="mt-0.5 size-4 shrink-0 text-[var(--green)]" />{" "}
-              Credit cost, respondent count, question, options, audience,
-              context, and model routing are frozen when execution starts.
-            </div>
-          </div>
-        )}
-      </Card>
-
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          disabled={step === 0 || saving}
-          onClick={() => setStep((current) => current - 1)}
-        >
-          <ArrowLeft /> Back
-        </Button>
-        {step < steps.length - 1 ? (
-          <Button
-            variant="blue"
-            onClick={() => setStep((current) => current + 1)}
-            disabled={
-              (step === 0 && (!name.trim() || !question.trim())) ||
-              (step === 1 && !optionsComplete)
-            }
-          >
-            Continue <ArrowRight />
-          </Button>
-        ) : (
-          <Button
-            variant="blue"
-            size="lg"
-            onClick={() => void launch()}
-            disabled={
-              saving || !complete || currentUser.creditBalance < creditCost
-            }
-          >
-            {saving ? <Loader2 className="animate-spin" /> : <Sparkles />}{" "}
-            Launch for {formatCredits(creditCost)}
-          </Button>
-        )}
+        </div>
       </div>
     </div>
   );
