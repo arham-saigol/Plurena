@@ -171,7 +171,7 @@ describe("model routing policy", () => {
       qwen3_7_plus: {
         vision: true,
         routes: [
-          ["opencode_go", "openai", "qwen3.7-plus"],
+          ["opencode_go", "anthropic", "qwen3.7-plus"],
           ["ai_gateway", "openai", "alibaba/qwen3.7-plus"],
         ],
       },

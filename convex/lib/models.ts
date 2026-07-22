@@ -101,7 +101,7 @@ export const MODEL_CATALOG = {
     routes: [
       {
         provider: "opencode_go",
-        protocol: "openai",
+        protocol: "anthropic",
         modelId: "qwen3.7-plus",
       },
       {
