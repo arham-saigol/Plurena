@@ -59,8 +59,12 @@ it("uses direct sign-up and sign-in copy", () => {
   expect(signUp).toContain(
     "Build and run your first panel with 25 free credits. No card or subscription required.",
   );
+  expect(signUp).toContain('href="/terms"');
+  expect(signUp).toContain('href="/privacy"');
   expect(signIn).toContain(
     "Return to your drafts, active panels, and reports.",
   );
   expect(signIn).toContain("Create a workspace");
+  expect(signIn).toContain('href="/terms"');
+  expect(signIn).toContain('href="/privacy"');
 });

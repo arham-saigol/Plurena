@@ -20,6 +20,8 @@ describe("public marketing pages", () => {
     expect(html).toContain('href="/llms.txt"');
     expect(html).toContain('href="/terms"');
     expect(html).toContain('href="/privacy"');
+    expect(html).toContain(">Blog</a>");
+    expect(html).not.toContain(">Blogs</a>");
   });
 
   it("publishes complete legal documents", () => {
@@ -37,8 +39,10 @@ describe("public marketing pages", () => {
     const changelog = renderToStaticMarkup(<ChangelogPage />);
 
     expect(blog).toContain(">Blog</span>");
+    expect(blog).toContain(">Blog</h1>");
     expect(blog).not.toContain("Research notes are on the way");
     expect(changelog).toContain(">Changelog</span>");
+    expect(changelog).toContain(">Changelog</h1>");
     expect(changelog).not.toContain("What changes in Plurena");
   });
 

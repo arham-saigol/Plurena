@@ -186,7 +186,7 @@ export default function LandingPage() {
           </div>
 
           <ol className="mx-auto mt-14 grid max-w-[72rem] gap-14 lg:grid-cols-3">
-            {steps.map(({ number, title, body }) => (
+            {steps.map(({ number, title, body }, index) => (
               <li
                 key={number}
                 className="bg-card relative rounded-2xl border p-7 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] sm:p-8 lg:min-h-64"
@@ -200,7 +200,7 @@ export default function LandingPage() {
                 <p className="text-muted-foreground mt-2.5 text-[15px] leading-6">
                   {body}
                 </p>
-                {number !== "03" && (
+                {index !== steps.length - 1 && (
                   <ArrowRight
                     aria-hidden="true"
                     className="text-muted-foreground absolute right-1/2 -bottom-[38px] z-10 size-5 translate-x-1/2 rotate-90 lg:top-1/2 lg:-right-[38px] lg:bottom-auto lg:translate-x-0 lg:-translate-y-1/2 lg:rotate-0"

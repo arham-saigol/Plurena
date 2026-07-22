@@ -45,7 +45,7 @@ export function MarketingFooter() {
             </li>
             <li>
               <Link href="/blog" className={linkClassName}>
-                Blogs
+                Blog
               </Link>
             </li>
             <li>

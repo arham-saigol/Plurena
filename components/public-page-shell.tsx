@@ -51,7 +51,12 @@ export function PublicPageShell({
       <article className="flex-1 px-4 py-16 sm:px-6 sm:py-24 lg:px-10">
         <div className="mx-auto max-w-3xl">
           {sectionLabel ? (
-            children
+            <>
+              <h1 className="mb-8 text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-5xl">
+                {sectionLabel}
+              </h1>
+              {children}
+            </>
           ) : (
             <>
               <p className="eyebrow">{eyebrow}</p>
