@@ -185,16 +185,16 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <ol className="mx-auto mt-14 grid max-w-[72rem] gap-6 lg:grid-cols-3 lg:gap-14">
+          <ol className="mx-auto mt-14 grid max-w-[72rem] gap-14 lg:grid-cols-3">
             {steps.map(({ number, title, body }) => (
               <li
                 key={number}
-                className="bg-card relative min-h-64 rounded-2xl border p-7 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] sm:p-8"
+                className="bg-card relative rounded-2xl border p-7 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] sm:p-8 lg:min-h-64"
               >
                 <span className="text-sm font-bold text-[var(--green)]">
                   {number}
                 </span>
-                <h3 className="mt-16 text-lg font-semibold tracking-[-0.025em]">
+                <h3 className="mt-10 text-lg font-semibold tracking-[-0.025em] lg:mt-16">
                   {title}
                 </h3>
                 <p className="text-muted-foreground mt-2.5 text-[15px] leading-6">
@@ -203,7 +203,7 @@ export default function LandingPage() {
                 {number !== "03" && (
                   <ArrowRight
                     aria-hidden="true"
-                    className="text-muted-foreground absolute right-1/2 -bottom-[22px] z-10 size-5 translate-x-1/2 rotate-90 lg:top-1/2 lg:-right-[38px] lg:bottom-auto lg:translate-x-0 lg:-translate-y-1/2 lg:rotate-0"
+                    className="text-muted-foreground absolute right-1/2 -bottom-[38px] z-10 size-5 translate-x-1/2 rotate-90 lg:top-1/2 lg:-right-[38px] lg:bottom-auto lg:translate-x-0 lg:-translate-y-1/2 lg:rotate-0"
                   />
                 )}
               </li>
