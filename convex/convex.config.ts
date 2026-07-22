@@ -3,8 +3,9 @@ import { v } from "convex/values";
 
 export default defineApp({
   env: {
-    OPENROUTER_API_KEY: v.optional(v.string()),
+    AI_GATEWAY_API_KEY: v.optional(v.string()),
     OPENCODE_GO_API_KEY: v.optional(v.string()),
+    STEPFUN_API_KEY: v.optional(v.string()),
     CREEM_API_KEY: v.optional(v.string()),
     CREEM_WEBHOOK_SECRET: v.optional(v.string()),
     CREEM_PRODUCT_ID_10: v.optional(v.string()),

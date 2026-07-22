@@ -86,7 +86,8 @@ export const ledgerTypeValidator = v.union(
 
 export const providerValidator = v.union(
   v.literal("opencode_go"),
-  v.literal("openrouter"),
+  v.literal("stepfun"),
+  v.literal("ai_gateway"),
 );
 
 export const providerAttemptStatusValidator = v.union(

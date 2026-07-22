@@ -4,8 +4,8 @@ import { z } from "zod";
 const mocks = vi.hoisted(() => ({
   env: {
     OPENCODE_GO_API_KEY: "opencode-test" as string | undefined,
-    OPENROUTER_API_KEY: "openrouter-test" as string | undefined,
-    APP_URL: undefined as string | undefined,
+    AI_GATEWAY_API_KEY: "gateway-test" as string | undefined,
+    STEPFUN_API_KEY: "stepfun-test" as string | undefined,
   },
   generateText: vi.fn(),
 }));
@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../_generated/server", () => ({ env: mocks.env }));
 vi.mock("@ai-sdk/anthropic", () => ({
   createAnthropic: vi.fn(() => vi.fn((modelId: string) => ({ modelId }))),
+}));
+vi.mock("@ai-sdk/gateway", () => ({
+  createGateway: vi.fn(() => vi.fn((modelId: string) => ({ modelId }))),
 }));
 vi.mock("@ai-sdk/openai-compatible", () => ({
   createOpenAICompatible: vi.fn(() =>
@@ -45,7 +48,8 @@ describe("routed generation failures", () => {
   beforeEach(() => {
     mocks.generateText.mockReset();
     mocks.env.OPENCODE_GO_API_KEY = "opencode-test";
-    mocks.env.OPENROUTER_API_KEY = "openrouter-test";
+    mocks.env.AI_GATEWAY_API_KEY = "gateway-test";
+    mocks.env.STEPFUN_API_KEY = "stepfun-test";
   });
 
   it("tries a backup provider after provider authentication fails", async () => {
@@ -57,7 +61,7 @@ describe("routed generation failures", () => {
 
     expect(result).toMatchObject({
       output: { answer: "fallback" },
-      provider: "openrouter",
+      provider: "ai_gateway",
     });
     expect(
       result.attempts.map(({ provider, errorClass }) => ({
@@ -66,7 +70,7 @@ describe("routed generation failures", () => {
       })),
     ).toEqual([
       { provider: "opencode_go", errorClass: "authentication" },
-      { provider: "openrouter", errorClass: undefined },
+      { provider: "ai_gateway", errorClass: undefined },
     ]);
   });
 
@@ -82,7 +86,7 @@ describe("routed generation failures", () => {
 
     expect(result).toMatchObject({
       output: { answer: "fallback" },
-      provider: "openrouter",
+      provider: "ai_gateway",
     });
     expect(result.attempts[0]).toMatchObject({
       status: "failed",
@@ -91,7 +95,7 @@ describe("routed generation failures", () => {
   });
 
   it("preserves transient retryability when unconfigured routes are skipped", async () => {
-    mocks.env.OPENROUTER_API_KEY = undefined;
+    mocks.env.AI_GATEWAY_API_KEY = undefined;
     mocks.generateText.mockRejectedValue({ status: 429 });
 
     const error = await generateStructured(request).catch((caught) => caught);

@@ -9,7 +9,7 @@ export const MODEL_CATALOG = {
         modelId: "minimax-m3",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "minimax/minimax-m3",
       },
@@ -25,9 +25,9 @@ export const MODEL_CATALOG = {
         modelId: "glm-5.2",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
-        modelId: "z-ai/glm-5.2",
+        modelId: "zai/glm-5.2",
       },
     ],
   },
@@ -41,7 +41,7 @@ export const MODEL_CATALOG = {
         modelId: "deepseek-v4-pro",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "deepseek/deepseek-v4-pro",
       },
@@ -57,7 +57,7 @@ export const MODEL_CATALOG = {
         modelId: "deepseek-v4-flash",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "deepseek/deepseek-v4-flash",
       },
@@ -73,7 +73,7 @@ export const MODEL_CATALOG = {
         modelId: "kimi-k2.6",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "moonshotai/kimi-k2.6",
       },
@@ -89,7 +89,7 @@ export const MODEL_CATALOG = {
         modelId: "kimi-k2.7-code",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "moonshotai/kimi-k2.7-code",
       },
@@ -105,9 +105,9 @@ export const MODEL_CATALOG = {
         modelId: "qwen3.7-plus",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
-        modelId: "qwen/qwen3.7-plus",
+        modelId: "alibaba/qwen3.7-plus",
       },
     ],
   },
@@ -121,7 +121,7 @@ export const MODEL_CATALOG = {
         modelId: "mimo-v2.5",
       },
       {
-        provider: "openrouter",
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "xiaomi/mimo-v2.5",
       },
@@ -132,7 +132,12 @@ export const MODEL_CATALOG = {
     vision: false,
     routes: [
       {
-        provider: "openrouter",
+        provider: "opencode_go",
+        protocol: "openai",
+        modelId: "hy3",
+      },
+      {
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "tencent/hy3",
       },
@@ -143,9 +148,30 @@ export const MODEL_CATALOG = {
     vision: true,
     routes: [
       {
-        provider: "openrouter",
+        provider: "stepfun",
+        protocol: "openai",
+        modelId: "step-3.7-flash",
+      },
+      {
+        provider: "ai_gateway",
         protocol: "openai",
         modelId: "stepfun/step-3.7-flash",
+      },
+    ],
+  },
+  laguna_s_2_1: {
+    label: "Laguna S 2.1",
+    vision: false,
+    routes: [
+      {
+        provider: "ai_gateway",
+        protocol: "openai",
+        modelId: "poolside/laguna-s-2.1-free",
+      },
+      {
+        provider: "ai_gateway",
+        protocol: "openai",
+        modelId: "poolside/laguna-s-2.1",
       },
     ],
   },
@@ -158,7 +184,7 @@ export const ROUTED_GENERATION_LEASE_MS =
   ROUTED_GENERATION_DEADLINE_MS + 2 * 60_000;
 
 export type ModelKey = keyof typeof MODEL_CATALOG;
-export type ProviderKey = "opencode_go" | "openrouter";
+export type ProviderKey = "opencode_go" | "stepfun" | "ai_gateway";
 export type ProviderProtocol = "openai" | "anthropic";
 
 export const MODEL_KEYS = Object.keys(MODEL_CATALOG) as Array<ModelKey>;
@@ -168,6 +194,7 @@ const textFallbackOrder: Array<ModelKey> = [
   "deepseek_v4_pro",
   "deepseek_v4_flash",
   "hy3",
+  "laguna_s_2_1",
 ];
 
 const visionFallbackOrder: Array<ModelKey> = [

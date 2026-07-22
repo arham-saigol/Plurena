@@ -1,6 +1,7 @@
 "use node";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGateway } from "@ai-sdk/gateway";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   generateText,
@@ -51,21 +52,27 @@ export class RoutedGenerationError extends Error {
 class ProviderNotConfiguredError extends Error {}
 
 function providerModel(route: ReturnType<typeof getModelRoutes>[number]) {
-  if (route.provider === "openrouter") {
-    if (!env.OPENROUTER_API_KEY) {
+  if (route.provider === "ai_gateway") {
+    if (!env.AI_GATEWAY_API_KEY) {
       throw new ProviderNotConfiguredError(
-        "OPENROUTER_API_KEY is not configured",
+        "AI_GATEWAY_API_KEY is not configured",
       );
     }
+    const provider = createGateway({
+      apiKey: env.AI_GATEWAY_API_KEY,
+    });
+    return provider(route.modelId);
+  }
+
+  if (route.provider === "stepfun") {
+    if (!env.STEPFUN_API_KEY) {
+      throw new ProviderNotConfiguredError("STEPFUN_API_KEY is not configured");
+    }
     const provider = createOpenAICompatible({
-      name: "openrouter",
-      apiKey: env.OPENROUTER_API_KEY,
-      baseURL: "https://openrouter.ai/api/v1",
+      name: "stepfun",
+      apiKey: env.STEPFUN_API_KEY,
+      baseURL: "https://api.stepfun.ai/v1",
       supportsStructuredOutputs: true,
-      headers: {
-        "HTTP-Referer": env.APP_URL ?? "https://plurena.app",
-        "X-Title": "Plurena",
-      },
     });
     return provider(route.modelId);
   }

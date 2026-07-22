@@ -15,6 +15,7 @@ import {
   classifyProviderError,
   getModelRoutes,
   ModelOutputValidationError,
+  MODEL_CATALOG,
   MODEL_KEYS,
   ROUTED_GENERATION_DEADLINE_MS,
   ROUTED_GENERATION_LEASE_MS,
@@ -123,11 +124,100 @@ describe("deterministic aggregation and refunds", () => {
 });
 
 describe("model routing policy", () => {
-  it("keeps the requested model first and only sends images to vision models", () => {
-    expect(getModelRoutes("glm_5_2", false)[0]).toMatchObject({
-      modelKey: "glm_5_2",
-      provider: "opencode_go",
-    });
+  it("uses the configured primary, fallback, and vision capability for every model", () => {
+    const expected = {
+      minimax_m3: {
+        vision: true,
+        routes: [
+          ["opencode_go", "minimax-m3"],
+          ["ai_gateway", "minimax/minimax-m3"],
+        ],
+      },
+      glm_5_2: {
+        vision: false,
+        routes: [
+          ["opencode_go", "glm-5.2"],
+          ["ai_gateway", "zai/glm-5.2"],
+        ],
+      },
+      deepseek_v4_pro: {
+        vision: false,
+        routes: [
+          ["opencode_go", "deepseek-v4-pro"],
+          ["ai_gateway", "deepseek/deepseek-v4-pro"],
+        ],
+      },
+      deepseek_v4_flash: {
+        vision: false,
+        routes: [
+          ["opencode_go", "deepseek-v4-flash"],
+          ["ai_gateway", "deepseek/deepseek-v4-flash"],
+        ],
+      },
+      kimi_k2_6: {
+        vision: true,
+        routes: [
+          ["opencode_go", "kimi-k2.6"],
+          ["ai_gateway", "moonshotai/kimi-k2.6"],
+        ],
+      },
+      kimi_k2_7_code: {
+        vision: true,
+        routes: [
+          ["opencode_go", "kimi-k2.7-code"],
+          ["ai_gateway", "moonshotai/kimi-k2.7-code"],
+        ],
+      },
+      qwen3_7_plus: {
+        vision: true,
+        routes: [
+          ["opencode_go", "qwen3.7-plus"],
+          ["ai_gateway", "alibaba/qwen3.7-plus"],
+        ],
+      },
+      mimo_v2_5: {
+        vision: true,
+        routes: [
+          ["opencode_go", "mimo-v2.5"],
+          ["ai_gateway", "xiaomi/mimo-v2.5"],
+        ],
+      },
+      hy3: {
+        vision: false,
+        routes: [
+          ["opencode_go", "hy3"],
+          ["ai_gateway", "tencent/hy3"],
+        ],
+      },
+      step_3_7_flash: {
+        vision: true,
+        routes: [
+          ["stepfun", "step-3.7-flash"],
+          ["ai_gateway", "stepfun/step-3.7-flash"],
+        ],
+      },
+      laguna_s_2_1: {
+        vision: false,
+        routes: [
+          ["ai_gateway", "poolside/laguna-s-2.1-free"],
+          ["ai_gateway", "poolside/laguna-s-2.1"],
+        ],
+      },
+    } as const;
+
+    expect(MODEL_KEYS).toEqual(Object.keys(expected));
+    for (const modelKey of MODEL_KEYS) {
+      const model = MODEL_CATALOG[modelKey];
+      expect(model.vision).toBe(expected[modelKey].vision);
+      expect(
+        getModelRoutes(modelKey, model.vision)
+          .slice(0, model.routes.length)
+          .map((route) => [route.provider, route.modelId]),
+      ).toEqual(expected[modelKey].routes);
+    }
+  });
+
+  it("only sends images to vision models", () => {
     const visionRoutes = getModelRoutes("glm_5_2", true);
     expect(
       visionRoutes.every((route) =>
@@ -141,7 +231,6 @@ describe("model routing policy", () => {
         ].includes(route.modelKey),
       ),
     ).toBe(true);
-    expect(MODEL_KEYS).toHaveLength(10);
   });
 
   it("keeps routed generation and its lease below the action limit", () => {

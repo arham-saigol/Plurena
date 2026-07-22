@@ -1,6 +1,6 @@
 # Plurena
 
-Plurena is a production-oriented marketing validation application. Users define an audience, compare text or image concepts, and receive directional feedback from a panel of distinct synthetic respondents. It is built with Next.js 16, React 19, TypeScript, Tailwind CSS v4, Clerk, Convex Cloud, AI SDK 6, OpenCode Go/OpenRouter, Creem, and Vercel.
+Plurena is a production-oriented marketing validation application. Users define an audience, compare text or image concepts, and receive directional feedback from a panel of distinct synthetic respondents. It is built with Next.js 16, React 19, TypeScript, Tailwind CSS v4, Clerk, Convex Cloud, AI SDK 6, OpenCode Go, StepFun, Vercel AI Gateway, Creem, and Vercel.
 
 Synthetic research is presented as decision support, not a substitute for real customer evidence. Reports persist exact vote statistics separately from model-written interpretation, and every report includes this limitation.
 
@@ -13,7 +13,7 @@ Synthetic research is presented as decision support, not a substitute for real c
 - One-credit-per-respondent test costs across every supported panel size
 - Immutable test snapshots and atomic, idempotent launch charging
 - Convex-managed persona batches, bounded respondent execution, leases, retry recovery, live progress, and hierarchical synthesis
-- All ten models from `models.md`, with centralized vision-aware routing, primary/backup providers, timeouts, limited retries, and error classification
+- All eleven models from `models.md`, with centralized vision-aware routing, primary/backup providers, timeouts, limited retries, and error classification
 - Structured and server-validated personas, respondent decisions, synthesis groups, and final narratives
 - Deterministic rankings, vote percentages, confidence distributions, ties, and result-strength labels
 - Persisted structured and readable reports, individual response search/filtering, and persona detail views
@@ -61,7 +61,8 @@ Requirements: Node.js 24, a Convex account, a Clerk application, six Creem one-t
 
    ```bash
    npx convex env set OPENCODE_GO_API_KEY your_key
-   npx convex env set OPENROUTER_API_KEY your_key
+   npx convex env set AI_GATEWAY_API_KEY your_key
+   npx convex env set STEPFUN_API_KEY your_key
    npx convex env set CREEM_API_KEY your_key
    npx convex env set CREEM_WEBHOOK_SECRET your_secret
    npx convex env set CREEM_PRODUCT_ID_10 prod_your_10_dollar_credit_product
@@ -74,7 +75,7 @@ Requirements: Node.js 24, a Convex account, a Clerk application, six Creem one-t
    npx convex env set APP_URL http://localhost:3000
    ```
 
-   One model provider may be omitted for local work. Routes without credentials are skipped; production should configure both so documented provider fallback is available.
+   Providers may be omitted for local work. Routes without credentials are skipped; production should configure all three so every documented primary and fallback route is available.
 
 5. Run the Convex watcher and Next.js in separate terminals:
 
