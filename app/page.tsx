@@ -11,6 +11,7 @@ import {
 import { AppEntryLink } from "@/components/app-entry-link";
 import { Brand } from "@/components/brand";
 import { FaqList } from "@/components/faq-list";
+import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingDemo } from "@/components/marketing-demo";
 import { Button } from "@/components/ui/button";
 
@@ -119,6 +120,9 @@ export default function LandingPage() {
             </a>
             <a href="#pricing" className="hover:text-foreground transition">
               Pricing
+            </a>
+            <a href="#faq" className="hover:text-foreground transition">
+              FAQ
             </a>
           </nav>
           <div className="flex items-center">
@@ -386,15 +390,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t px-4 py-8 sm:px-6 lg:px-10">
-        <div className="text-muted-foreground mx-auto flex max-w-[84rem] flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <Brand />
-          <p className="max-w-md text-xs leading-5">
-            Directional synthetic research. Validate high-stakes decisions with
-            real customers too.
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

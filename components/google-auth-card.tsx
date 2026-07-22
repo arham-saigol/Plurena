@@ -119,8 +119,21 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
         </Link>
       </p>
       <p className="text-muted-foreground mt-5 border-t pt-5 text-center text-xs leading-5">
-        By continuing, you agree to use Plurena for directional research and to
-        validate high-stakes decisions with real customers too.
+        By continuing, you agree to Plurena&apos;s{" "}
+        <Link
+          href="/terms"
+          className="text-foreground underline underline-offset-4"
+        >
+          Terms of Service
+        </Link>{" "}
+        and acknowledge the{" "}
+        <Link
+          href="/privacy"
+          className="text-foreground underline underline-offset-4"
+        >
+          Privacy Policy
+        </Link>
+        .
       </p>
     </div>
   );
