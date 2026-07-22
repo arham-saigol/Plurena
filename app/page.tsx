@@ -366,20 +366,23 @@ export default function LandingPage() {
       </section>
 
       <section className="px-4 py-20 text-center sm:px-6 sm:py-28 lg:px-10">
-        <div className="mx-auto max-w-2xl">
-          <p className="eyebrow">Get started</p>
-          <h2 className="mt-4 text-3xl leading-[1.06] font-bold tracking-[-0.04em] text-balance sm:text-5xl">
-            Put your next decision in front of an audience.
+        <div className="bg-card mx-auto max-w-3xl rounded-2xl border px-4 py-16 shadow-[0_0_0_5px_color-mix(in_srgb,var(--border)_55%,transparent),var(--shadow-sm)] sm:px-10 sm:py-20">
+          <h2 className="w-full max-w-none text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem] sm:text-balance lg:whitespace-nowrap">
+            Put your options to the test
           </h2>
-          <p className="text-muted-foreground mx-auto mt-5 max-w-xl text-lg leading-8">
-            Run your first panel today and have the report before your next
-            review.
+          <p className="text-muted-foreground mx-auto mt-5 w-full max-w-none text-lg leading-8 sm:max-w-2xl sm:text-balance">
+            Compare your options with synthetic respondents{" "}
+            <br className="hidden sm:block" />
+            and see what stands out.
           </p>
           <Button asChild size="lg" variant="accent" className="mt-8">
             <AppEntryLink signedOutHref="/sign-up">
               Create your first test <ArrowRight />
             </AppEntryLink>
           </Button>
+          <p className="text-muted-foreground mt-2.5 text-[13px]">
+            25 free credits. No card required
+          </p>
         </div>
       </section>
 
