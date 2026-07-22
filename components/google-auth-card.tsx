@@ -11,18 +11,17 @@ const copy = {
   "sign-in": {
     eyebrow: "Welcome back",
     title: "Log in to Plurena",
-    description:
-      "Open your workspace to pick up a draft, check a live panel, or review a decision.",
+    description: "Return to your drafts, active panels, and reports.",
     action: "Continue with Google",
     alternate: "New to Plurena?",
-    alternateAction: "Start free",
+    alternateAction: "Create a workspace",
     alternateHref: "/sign-up",
   },
   "sign-up": {
     eyebrow: "Start with 25 free credits",
     title: "Create your workspace",
     description:
-      "Run your first panel in minutes — no card or subscription required.",
+      "Build and run your first panel with 25 free credits. No card or subscription required.",
     action: "Continue with Google",
     alternate: "Already have a workspace?",
     alternateAction: "Log in",
