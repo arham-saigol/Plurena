@@ -73,7 +73,7 @@ export function BillingPanel() {
             </p>
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
               <ShieldCheck className="size-4 text-[var(--green)]" /> Payments
-              are processed securely by Creem.
+              are processed securely by our payment processor.
             </div>
           </CardContent>
         </Card>
@@ -145,7 +145,7 @@ export function BillingPanel() {
                 ) : (
                   <CreditCard />
                 )}
-                Continue to Creem
+                Continue to secure checkout
                 {!submitting && <ArrowUpRight />}
               </Button>
             </div>

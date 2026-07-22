@@ -36,6 +36,7 @@ vi.mock("ai", () => ({
 }));
 
 import { generateStructured, RoutedGenerationError } from "./ai";
+import { MODEL_CATALOG } from "./models";
 
 const request = {
   requestedModel: "glm_5_2" as const,
@@ -94,6 +95,25 @@ describe("routed generation failures", () => {
       status: "failed",
       errorClass: "schema",
     });
+  });
+
+  it("replaces a failed image model with another vision model", async () => {
+    mocks.generateText
+      .mockRejectedValueOnce({ status: 503 })
+      .mockRejectedValueOnce({ status: 503 })
+      .mockResolvedValueOnce({ output: { answer: "replacement" } });
+
+    const result = await generateStructured({
+      ...request,
+      requestedModel: "minimax_m3",
+      requiresVision: true,
+    });
+
+    expect(result.modelKey).not.toBe("minimax_m3");
+    expect(MODEL_CATALOG[result.modelKey].vision).toBe(true);
+    expect(
+      result.attempts.slice(0, 2).map((attempt) => attempt.modelKey),
+    ).toEqual(["minimax_m3", "minimax_m3"]);
   });
 
   it("tries the paid Laguna route when the free route is unavailable", async () => {

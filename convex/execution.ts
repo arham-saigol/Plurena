@@ -16,6 +16,7 @@ import {
 } from "./lib/validators";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import {
+  getRespondentModels,
   ROUTED_GENERATION_LEASE_MS,
   type ProviderErrorClass,
 } from "./lib/models";
@@ -360,7 +361,13 @@ export const completePersonaBatch = internalMutation({
         "Persona generation count did not match the test snapshot",
       );
     }
-    for (const persona of allPersonas) {
+    const test = await ctx.db.get("tests", batch.testId);
+    if (!test) throw new Error("Test not found");
+    const respondentModels = getRespondentModels(test.optionType === "image");
+    for (let index = 0; index < allPersonas.length; index += 1) {
+      const persona = allPersonas[index];
+      const modelKey = respondentModels[index % respondentModels.length];
+      if (!persona || !modelKey) throw new Error("Respondent routing failed");
       const existingRun = await ctx.db
         .query("respondentRuns")
         .withIndex("by_testId_and_personaId", (q) =>
@@ -373,6 +380,7 @@ export const completePersonaBatch = internalMutation({
           snapshotId: batch.snapshotId,
           ownerId: batch.ownerId,
           personaId: persona._id,
+          modelKey,
           status: "pending",
           attempts: 0,
           createdAt: now,
@@ -380,8 +388,6 @@ export const completePersonaBatch = internalMutation({
         });
       }
     }
-    const test = await ctx.db.get("tests", batch.testId);
-    if (!test) throw new Error("Test not found");
     await syncDashboardStatsForTest(ctx, test, "running_respondents");
     await ctx.db.patch("tests", test._id, {
       status: "running_respondents",

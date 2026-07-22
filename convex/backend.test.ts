@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import { MODEL_KEYS } from "./lib/models";
 import schema from "./schema";
 
 const modules = import.meta.glob(["./**/*.*s", "!./**/*.test.ts"]);
@@ -21,7 +22,6 @@ const draft = {
   optionType: "text" as const,
   audience: "Operations leaders at growing software companies",
   respondentCount: 20 as const,
-  respondentModel: "glm_5_2" as const,
   options: [
     {
       kind: "text" as const,
@@ -63,6 +63,53 @@ async function launchedTestAsAlice() {
 }
 
 describe("authenticated financial invariants", () => {
+  it("keeps model routing out of public test configuration and details", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(aliceIdentity);
+    await alice.mutation(api.users.syncCurrentUser, {});
+    const testId = await alice.mutation(api.tests.saveDraft, draft);
+    const snapshotId = await alice.mutation(api.tests.launch, { testId });
+    await t.run(async (ctx) => {
+      const test = await ctx.db.get("tests", testId);
+      if (!test) throw new Error("Expected test");
+      await ctx.db.insert("synthesisReports", {
+        testId,
+        snapshotId,
+        ownerId: test.ownerId,
+        executiveSummary: "Summary",
+        outcomeLabel: "Leader",
+        strengthLabel: "Directional",
+        optionResults: [],
+        confidenceDistribution: { low: 0, medium: 0, high: 0 },
+        winningReasons: [],
+        optionInsights: [],
+        objections: [],
+        segments: [],
+        disagreements: [],
+        implications: [],
+        nextTests: [],
+        limitations: [],
+        readableReport: "Report",
+        successfulResponses: 0,
+        failedResponses: 0,
+        refundedCredits: 0,
+        modelKey: "glm_5_2",
+        provider: "opencode_go",
+        createdAt: Date.now(),
+      });
+    });
+
+    const configuration = await alice.query(api.tests.configuration, {});
+    const details = await alice.query(api.tests.get, { testId });
+
+    expect(configuration).toEqual({
+      respondentCounts: [20, 50, 75, 100, 150, 200, 250],
+    });
+    expect(details.test).not.toHaveProperty("respondentModel");
+    expect(details.report).not.toHaveProperty("modelKey");
+    expect(details.report).not.toHaveProperty("provider");
+  });
+
   it("grants onboarding credit exactly once and isolates user data", async () => {
     const t = convexTest(schema, modules);
     const alice = t.withIdentity(aliceIdentity);
@@ -167,7 +214,6 @@ describe("authenticated financial invariants", () => {
           optionType: "text",
           audience: "Test audience",
           respondentCount: 20,
-          respondentModel: "glm_5_2",
           status: "completed",
           dashboardBucket: "completed",
           createdAt: now,
@@ -259,7 +305,6 @@ describe("authenticated financial invariants", () => {
     const imageDraft = {
       ...draft,
       optionType: "image" as const,
-      respondentModel: "minimax_m3" as const,
     };
     const firstTestId = await alice.mutation(api.tests.saveDraft, {
       ...imageDraft,
@@ -337,7 +382,6 @@ describe("authenticated financial invariants", () => {
     const imageDraft = {
       ...draft,
       optionType: "image" as const,
-      respondentModel: "minimax_m3" as const,
     };
     const testId = await alice.mutation(api.tests.saveDraft, {
       ...imageDraft,
@@ -692,6 +736,39 @@ describe("authenticated financial invariants", () => {
     expect(counts.responses).toBe(1);
     expect(counts.progress?.completedRespondents).toBe(1);
   });
+
+  it("balances respondent runs across the full model catalog", async () => {
+    const { t } = await launchedTestAsAlice();
+    const batchId = await t.run(async (ctx) => {
+      const batch = await ctx.db.query("personaBatches").first();
+      if (!batch) throw new Error("Expected persona batch");
+      return batch._id;
+    });
+    const claim = await t.mutation(internal.execution.claimPersonaBatch, {
+      batchId,
+    });
+    if (typeof claim !== "number") throw new Error("Expected claim");
+
+    await t.mutation(internal.execution.completePersonaBatch, {
+      batchId,
+      claimToken: claim,
+      personas: personaFixtures(),
+    });
+
+    const assignedModels = await t.run(async (ctx) =>
+      (await ctx.db.query("respondentRuns").collect()).map(
+        (run) => run.modelKey,
+      ),
+    );
+    expect(new Set(assignedModels)).toEqual(new Set(MODEL_KEYS));
+    expect(
+      Math.max(
+        ...MODEL_KEYS.map(
+          (key) => assignedModels.filter((model) => model === key).length,
+        ),
+      ),
+    ).toBeLessThanOrEqual(2);
+  });
 });
 
 describe("worker fencing", () => {
@@ -1003,6 +1080,7 @@ describe("lease recovery", () => {
             snapshotId: first.snapshotId,
             ownerId: first.ownerId,
             personaId: first.personaId,
+            modelKey: first.modelKey,
             status: "running",
             attempts: 1,
             leaseExpiresAt: now - 1_000,

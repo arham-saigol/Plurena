@@ -33,10 +33,12 @@ describe.each([
   });
 });
 
-it("includes the Convex client URL in the setup guidance", () => {
-  expect(renderToStaticMarkup(<ConfigurationRequired />)).toContain(
-    "NEXT_PUBLIC_CONVEX_URL",
-  );
+it("keeps service names and configuration identifiers out of setup guidance", () => {
+  const markup = renderToStaticMarkup(<ConfigurationRequired />);
+  expect(markup).toContain("Configure the application data");
+  expect(markup).not.toContain("Convex");
+  expect(markup).not.toContain("Clerk");
+  expect(markup).not.toContain("NEXT_PUBLIC_");
 });
 
 it("centers auth content without navigation or promotional content", () => {

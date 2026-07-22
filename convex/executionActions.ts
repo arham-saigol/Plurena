@@ -11,6 +11,7 @@ import {
 } from "./lib/ai";
 import {
   classifyProviderError,
+  getModelForAttempt,
   ModelOutputValidationError,
 } from "./lib/models";
 import {
@@ -205,9 +206,14 @@ export const runRespondent = internalAction({
         }
       }
 
+      const requiresVision = payload.snapshot.optionType === "image";
       const result = await generateStructured({
-        requestedModel: payload.snapshot.respondentModel,
-        requiresVision: payload.snapshot.optionType === "image",
+        requestedModel: getModelForAttempt(
+          payload.run.modelKey,
+          requiresVision,
+          args.claimToken,
+        ),
+        requiresVision,
         schema: respondentResultSchema,
         system:
           "You are one respondent in a synthetic audience study. Make no tool calls. Stay inside the supplied persona, evaluate all options, and return concise research conclusions rather than hidden reasoning.",

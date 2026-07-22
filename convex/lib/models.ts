@@ -189,23 +189,6 @@ export type ProviderProtocol = "openai" | "anthropic";
 
 export const MODEL_KEYS = Object.keys(MODEL_CATALOG) as Array<ModelKey>;
 
-const textFallbackOrder: Array<ModelKey> = [
-  "glm_5_2",
-  "deepseek_v4_pro",
-  "deepseek_v4_flash",
-  "hy3",
-  "laguna_s_2_1",
-];
-
-const visionFallbackOrder: Array<ModelKey> = [
-  "minimax_m3",
-  "kimi_k2_6",
-  "qwen3_7_plus",
-  "mimo_v2_5",
-  "step_3_7_flash",
-  "kimi_k2_7_code",
-];
-
 export function isModelKey(value: string): value is ModelKey {
   return Object.hasOwn(MODEL_CATALOG, value);
 }
@@ -214,15 +197,31 @@ export function getModel(modelKey: ModelKey) {
   return MODEL_CATALOG[modelKey];
 }
 
+export function getRespondentModels(requiresVision: boolean) {
+  return MODEL_KEYS.filter(
+    (modelKey) => !requiresVision || MODEL_CATALOG[modelKey].vision,
+  );
+}
+
+export function getModelForAttempt(
+  initialModel: ModelKey,
+  requiresVision: boolean,
+  attempt: number,
+) {
+  const models = getRespondentModels(requiresVision);
+  const initialIndex = models.indexOf(initialModel);
+  const offset = Math.max(0, attempt - 1);
+  const model =
+    models[((initialIndex < 0 ? 0 : initialIndex) + offset) % models.length];
+  if (!model) throw new Error("No supported respondent models are configured");
+  return model;
+}
+
 export function getModelRoutes(
   requestedModel: ModelKey,
   requiresVision: boolean,
 ) {
-  const order = [
-    requestedModel,
-    ...(requiresVision ? visionFallbackOrder : textFallbackOrder),
-    ...MODEL_KEYS,
-  ];
+  const order = [requestedModel, ...getRespondentModels(requiresVision)];
   const seenModels = new Set<ModelKey>();
   const seenRoutes = new Set<string>();
 

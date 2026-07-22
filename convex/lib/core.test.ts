@@ -13,7 +13,9 @@ import {
 } from "./credits";
 import {
   classifyProviderError,
+  getModelForAttempt,
   getModelRoutes,
+  getRespondentModels,
   ModelOutputValidationError,
   MODEL_CATALOG,
   MODEL_KEYS,
@@ -231,6 +233,27 @@ describe("model routing policy", () => {
         ].includes(route.modelKey),
       ),
     ).toBe(true);
+  });
+
+  it("distributes text respondents across every supported model", () => {
+    expect(getRespondentModels(false)).toEqual(MODEL_KEYS);
+  });
+
+  it("distributes image respondents only across every vision model", () => {
+    const visionModels = MODEL_KEYS.filter(
+      (modelKey) => MODEL_CATALOG[modelKey].vision,
+    );
+
+    expect(getRespondentModels(true)).toEqual(visionModels);
+  });
+
+  it("rotates retries to another capability-eligible model", () => {
+    expect(getModelForAttempt("glm_5_2", false, 1)).toBe("glm_5_2");
+    expect(getModelForAttempt("glm_5_2", false, 2)).not.toBe("glm_5_2");
+
+    const replacement = getModelForAttempt("minimax_m3", true, 2);
+    expect(replacement).not.toBe("minimax_m3");
+    expect(MODEL_CATALOG[replacement].vision).toBe(true);
   });
 
   it("keeps routed generation and its lease below the action limit", () => {
