@@ -25,6 +25,7 @@ import type { DataModel } from "./dataModel.js";
  * Typesafe environment variables declared in `convex.config.ts`.
  */
 type Env = {
+  readonly AI_GATEWAY_API_KEY: string | undefined;
   readonly APP_URL: string | undefined;
   readonly CREEM_API_BASE_URL: string | undefined;
   readonly CREEM_API_KEY: string | undefined;
@@ -36,7 +37,7 @@ type Env = {
   readonly CREEM_PRODUCT_ID_50: string | undefined;
   readonly CREEM_WEBHOOK_SECRET: string | undefined;
   readonly OPENCODE_GO_API_KEY: string | undefined;
-  readonly OPENROUTER_API_KEY: string | undefined;
+  readonly STEPFUN_API_KEY: string | undefined;
 };
 
 /**

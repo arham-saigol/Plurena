@@ -4,9 +4,12 @@ import { z } from "zod";
 const mocks = vi.hoisted(() => ({
   env: {
     OPENCODE_GO_API_KEY: "opencode-test" as string | undefined,
-    OPENROUTER_API_KEY: "openrouter-test" as string | undefined,
-    APP_URL: undefined as string | undefined,
+    AI_GATEWAY_API_KEY: "gateway-test" as string | undefined,
+    STEPFUN_API_KEY: "stepfun-test" as string | undefined,
   },
+  createOpenAICompatible: vi.fn(() =>
+    vi.fn((modelId: string) => ({ modelId })),
+  ),
   generateText: vi.fn(),
 }));
 
@@ -14,10 +17,11 @@ vi.mock("../_generated/server", () => ({ env: mocks.env }));
 vi.mock("@ai-sdk/anthropic", () => ({
   createAnthropic: vi.fn(() => vi.fn((modelId: string) => ({ modelId }))),
 }));
+vi.mock("@ai-sdk/gateway", () => ({
+  createGateway: vi.fn(() => vi.fn((modelId: string) => ({ modelId }))),
+}));
 vi.mock("@ai-sdk/openai-compatible", () => ({
-  createOpenAICompatible: vi.fn(() =>
-    vi.fn((modelId: string) => ({ modelId })),
-  ),
+  createOpenAICompatible: mocks.createOpenAICompatible,
 }));
 vi.mock("ai", () => ({
   generateText: mocks.generateText,
@@ -43,9 +47,11 @@ const request = {
 
 describe("routed generation failures", () => {
   beforeEach(() => {
+    mocks.createOpenAICompatible.mockClear();
     mocks.generateText.mockReset();
     mocks.env.OPENCODE_GO_API_KEY = "opencode-test";
-    mocks.env.OPENROUTER_API_KEY = "openrouter-test";
+    mocks.env.AI_GATEWAY_API_KEY = "gateway-test";
+    mocks.env.STEPFUN_API_KEY = "stepfun-test";
   });
 
   it("tries a backup provider after provider authentication fails", async () => {
@@ -57,7 +63,7 @@ describe("routed generation failures", () => {
 
     expect(result).toMatchObject({
       output: { answer: "fallback" },
-      provider: "openrouter",
+      provider: "ai_gateway",
     });
     expect(
       result.attempts.map(({ provider, errorClass }) => ({
@@ -66,7 +72,7 @@ describe("routed generation failures", () => {
       })),
     ).toEqual([
       { provider: "opencode_go", errorClass: "authentication" },
-      { provider: "openrouter", errorClass: undefined },
+      { provider: "ai_gateway", errorClass: undefined },
     ]);
   });
 
@@ -82,7 +88,7 @@ describe("routed generation failures", () => {
 
     expect(result).toMatchObject({
       output: { answer: "fallback" },
-      provider: "openrouter",
+      provider: "ai_gateway",
     });
     expect(result.attempts[0]).toMatchObject({
       status: "failed",
@@ -90,8 +96,45 @@ describe("routed generation failures", () => {
     });
   });
 
+  it("tries the paid Laguna route when the free route is unavailable", async () => {
+    mocks.generateText
+      .mockRejectedValueOnce({ status: 404 })
+      .mockResolvedValueOnce({ output: { answer: "fallback" } });
+
+    const result = await generateStructured({
+      ...request,
+      requestedModel: "laguna_s_2_1",
+    });
+
+    expect(result).toMatchObject({
+      output: { answer: "fallback" },
+      modelKey: "laguna_s_2_1",
+      provider: "ai_gateway",
+    });
+    expect(result.attempts).toMatchObject([
+      { errorClass: "provider_unavailable", status: "failed" },
+      { status: "succeeded" },
+    ]);
+  });
+
+  it("uses StepFun JSON mode instead of unsupported native schemas", async () => {
+    mocks.generateText.mockResolvedValue({ output: { answer: "stepfun" } });
+
+    await generateStructured({
+      ...request,
+      requestedModel: "step_3_7_flash",
+    });
+
+    expect(mocks.createOpenAICompatible).toHaveBeenCalledWith({
+      name: "stepfun",
+      apiKey: "stepfun-test",
+      baseURL: "https://api.stepfun.ai/v1",
+      supportsStructuredOutputs: false,
+    });
+  });
+
   it("preserves transient retryability when unconfigured routes are skipped", async () => {
-    mocks.env.OPENROUTER_API_KEY = undefined;
+    mocks.env.AI_GATEWAY_API_KEY = undefined;
     mocks.generateText.mockRejectedValue({ status: 429 });
 
     const error = await generateStructured(request).catch((caught) => caught);
