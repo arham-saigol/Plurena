@@ -72,7 +72,7 @@ function providerModel(route: ReturnType<typeof getModelRoutes>[number]) {
       name: "stepfun",
       apiKey: env.STEPFUN_API_KEY,
       baseURL: "https://api.stepfun.ai/v1",
-      supportsStructuredOutputs: true,
+      supportsStructuredOutputs: false,
     });
     return provider(route.modelId);
   }

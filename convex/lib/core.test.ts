@@ -129,78 +129,78 @@ describe("model routing policy", () => {
       minimax_m3: {
         vision: true,
         routes: [
-          ["opencode_go", "minimax-m3"],
-          ["ai_gateway", "minimax/minimax-m3"],
+          ["opencode_go", "anthropic", "minimax-m3"],
+          ["ai_gateway", "openai", "minimax/minimax-m3"],
         ],
       },
       glm_5_2: {
         vision: false,
         routes: [
-          ["opencode_go", "glm-5.2"],
-          ["ai_gateway", "zai/glm-5.2"],
+          ["opencode_go", "openai", "glm-5.2"],
+          ["ai_gateway", "openai", "zai/glm-5.2"],
         ],
       },
       deepseek_v4_pro: {
         vision: false,
         routes: [
-          ["opencode_go", "deepseek-v4-pro"],
-          ["ai_gateway", "deepseek/deepseek-v4-pro"],
+          ["opencode_go", "openai", "deepseek-v4-pro"],
+          ["ai_gateway", "openai", "deepseek/deepseek-v4-pro"],
         ],
       },
       deepseek_v4_flash: {
         vision: false,
         routes: [
-          ["opencode_go", "deepseek-v4-flash"],
-          ["ai_gateway", "deepseek/deepseek-v4-flash"],
+          ["opencode_go", "openai", "deepseek-v4-flash"],
+          ["ai_gateway", "openai", "deepseek/deepseek-v4-flash"],
         ],
       },
       kimi_k2_6: {
         vision: true,
         routes: [
-          ["opencode_go", "kimi-k2.6"],
-          ["ai_gateway", "moonshotai/kimi-k2.6"],
+          ["opencode_go", "openai", "kimi-k2.6"],
+          ["ai_gateway", "openai", "moonshotai/kimi-k2.6"],
         ],
       },
       kimi_k2_7_code: {
         vision: true,
         routes: [
-          ["opencode_go", "kimi-k2.7-code"],
-          ["ai_gateway", "moonshotai/kimi-k2.7-code"],
+          ["opencode_go", "openai", "kimi-k2.7-code"],
+          ["ai_gateway", "openai", "moonshotai/kimi-k2.7-code"],
         ],
       },
       qwen3_7_plus: {
         vision: true,
         routes: [
-          ["opencode_go", "qwen3.7-plus"],
-          ["ai_gateway", "alibaba/qwen3.7-plus"],
+          ["opencode_go", "openai", "qwen3.7-plus"],
+          ["ai_gateway", "openai", "alibaba/qwen3.7-plus"],
         ],
       },
       mimo_v2_5: {
         vision: true,
         routes: [
-          ["opencode_go", "mimo-v2.5"],
-          ["ai_gateway", "xiaomi/mimo-v2.5"],
+          ["opencode_go", "openai", "mimo-v2.5"],
+          ["ai_gateway", "openai", "xiaomi/mimo-v2.5"],
         ],
       },
       hy3: {
         vision: false,
         routes: [
-          ["opencode_go", "hy3"],
-          ["ai_gateway", "tencent/hy3"],
+          ["opencode_go", "openai", "hy3"],
+          ["ai_gateway", "openai", "tencent/hy3"],
         ],
       },
       step_3_7_flash: {
         vision: true,
         routes: [
-          ["stepfun", "step-3.7-flash"],
-          ["ai_gateway", "stepfun/step-3.7-flash"],
+          ["stepfun", "openai", "step-3.7-flash"],
+          ["ai_gateway", "openai", "stepfun/step-3.7-flash"],
         ],
       },
       laguna_s_2_1: {
         vision: false,
         routes: [
-          ["ai_gateway", "poolside/laguna-s-2.1-free"],
-          ["ai_gateway", "poolside/laguna-s-2.1"],
+          ["ai_gateway", "openai", "poolside/laguna-s-2.1-free"],
+          ["ai_gateway", "openai", "poolside/laguna-s-2.1"],
         ],
       },
     } as const;
@@ -212,7 +212,7 @@ describe("model routing policy", () => {
       expect(
         getModelRoutes(modelKey, model.vision)
           .slice(0, model.routes.length)
-          .map((route) => [route.provider, route.modelId]),
+          .map((route) => [route.provider, route.protocol, route.modelId]),
       ).toEqual(expected[modelKey].routes);
     }
   });

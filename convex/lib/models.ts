@@ -285,6 +285,9 @@ export function classifyProviderError(error: unknown): {
   if (status === 429) {
     return { classification: "rate_limit", retryable: true };
   }
+  if (status === 404) {
+    return { classification: "provider_unavailable", retryable: true };
+  }
   if (status !== undefined && status >= 500) {
     return { classification: "provider_unavailable", retryable: true };
   }
