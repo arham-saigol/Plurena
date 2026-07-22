@@ -11,18 +11,17 @@ const copy = {
   "sign-in": {
     eyebrow: "Welcome back",
     title: "Log in to Plurena",
-    description:
-      "Open your workspace to pick up a draft, check a live panel, or review a decision.",
+    description: "Return to your drafts, active panels, and reports.",
     action: "Continue with Google",
     alternate: "New to Plurena?",
-    alternateAction: "Start free",
+    alternateAction: "Create a workspace",
     alternateHref: "/sign-up",
   },
   "sign-up": {
     eyebrow: "Start with 25 free credits",
     title: "Create your workspace",
     description:
-      "Run your first panel in minutes — no card or subscription required.",
+      "Build and run your first panel with 25 free credits. No card or subscription required.",
     action: "Continue with Google",
     alternate: "Already have a workspace?",
     alternateAction: "Log in",
@@ -119,8 +118,21 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
         </Link>
       </p>
       <p className="text-muted-foreground mt-5 border-t pt-5 text-center text-xs leading-5">
-        By continuing, you agree to use Plurena for directional research and to
-        validate high-stakes decisions with real customers too.
+        By continuing, you agree to Plurena&apos;s{" "}
+        <Link
+          href="/terms"
+          className="text-foreground underline underline-offset-4"
+        >
+          Terms of Service
+        </Link>{" "}
+        and acknowledge the{" "}
+        <Link
+          href="/privacy"
+          className="text-foreground underline underline-offset-4"
+        >
+          Privacy Policy
+        </Link>
+        .
       </p>
     </div>
   );

@@ -58,9 +58,9 @@
   --destructive-soft: #3a2422;
   --green: #63c398;
   --green-soft: #1f332b;
-  --cta: #4fb489;
-  --cta-hover: #63c398;
-  --cta-foreground: #10251b;
+  --cta: #287a59;
+  --cta-hover: #21684c;
+  --cta-foreground: #ffffff;
   --blue: #6fa8ea;
   --blue-soft: #223242;
   --amber: #d9ae5f;
@@ -162,32 +162,6 @@ select {
 
 .surface-shadow {
   box-shadow: var(--shadow-sm);
-}
-
-/* Auth layout side panel: deep charcoal in light mode, elevated in dark mode. */
-.auth-aside {
-  --aside-text: #f7f5f3;
-  --aside-muted: rgba(247, 245, 243, 0.62);
-  --aside-faint: rgba(247, 245, 243, 0.38);
-  --aside-line: rgba(247, 245, 243, 0.12);
-  background: #242424;
-  background-image:
-    linear-gradient(to right, var(--aside-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--aside-line) 1px, transparent 1px);
-  background-size: 30px 30px;
-  color: var(--aside-text);
-}
-
-.dark .auth-aside {
-  --aside-text: var(--card-foreground);
-  --aside-muted: var(--muted-foreground);
-  --aside-faint: var(--muted-foreground);
-  --aside-line: var(--border);
-  background: var(--card);
-  background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  border-right: 1px solid var(--border);
 }
 
 @keyframes enter-up {
