@@ -268,7 +268,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[72rem]">
           <div className="text-center">
             <p className="eyebrow">Pricing</p>
-            <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem] sm:whitespace-nowrap">
+            <h2 className="mt-3 text-4xl leading-[1.08] font-bold tracking-[-0.04em] sm:text-[2.875rem] lg:whitespace-nowrap">
               Pay for respondents, not subscriptions
             </h2>
           </div>
