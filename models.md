@@ -11,7 +11,7 @@
 - Vision: No
 - Primary: OpenCode Go (`glm-5.2`)
 - Fallback: Vercel AI Gateway (`zai/glm-5.2`)
-- Roles: Persona generation and synthesis
+- Roles: Persona/respondent generation and synthesis
 
 3. DeepSeek V4 Pro
 
