@@ -105,7 +105,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-background min-h-screen">
       <header className="bg-background/85 sticky top-0 z-30 border-b backdrop-blur-xl">
-        <div className="mx-auto hidden h-16 max-w-[1320px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 lg:grid lg:px-10">
+        <div className="mx-auto hidden h-16 max-w-[84rem] grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 lg:grid lg:px-10">
           <Brand href="/app" />
           <nav
             className="bg-card flex items-center rounded-lg border p-1"
@@ -207,7 +207,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10 lg:pb-12">
+      <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-[84rem] px-4 pt-6 pb-28 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10 lg:pb-12">
         {children}
       </main>
     </div>
