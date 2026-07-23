@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import {
   AuthLoading,
   Authenticated,
@@ -15,18 +15,16 @@ import {
   FlaskConical,
   LayoutDashboard,
   Plus,
-  Settings,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { Brand } from "@/components/brand";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ProfileMenu } from "@/components/profile-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCredits } from "@/lib/utils";
-import { clerkAppearance } from "@/lib/clerk-appearance";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutDashboard },
@@ -37,7 +35,6 @@ const mobileNavItems = [
   ...navItems,
   { href: "/app/tests/new", label: "New", icon: Plus },
   { href: "/app/billing", label: "Credits", icon: Coins },
-  { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 function WorkspaceBootstrap({ children }: { children: React.ReactNode }) {
@@ -136,41 +133,24 @@ function Shell({ children }: { children: React.ReactNode }) {
                 {currentUser ? formatCredits(currentUser.creditBalance) : "—"}
               </Link>
             </Button>
-            <ThemeToggle />
-            <Button asChild variant="ghost" size="icon">
-              <Link href="/app/settings" aria-label="Settings">
-                <Settings />
-              </Link>
-            </Button>
             <div className="ml-1 grid size-10 place-items-center">
-              <UserButton appearance={clerkAppearance} />
+              <ProfileMenu />
             </div>
-            <Button asChild variant="accent" className="ml-1.5">
-              <Link href="/app/tests/new">
-                <Plus /> New test
-              </Link>
-            </Button>
           </div>
         </div>
 
         <div className="flex h-15 items-center justify-between px-4 lg:hidden">
           <Brand href="/app" />
           <div className="flex items-center gap-1">
-            <Button asChild size="sm" variant="accent">
-              <Link href="/app/tests/new">
-                <Plus /> New test
-              </Link>
-            </Button>
-            <ThemeToggle />
             <div className="ml-1 grid size-9 place-items-center">
-              <UserButton appearance={clerkAppearance} />
+              <ProfileMenu />
             </div>
           </div>
         </div>
       </header>
 
       <nav
-        className="bg-background/90 fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+        className="bg-background/90 fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
         aria-label="Mobile workspace navigation"
       >
         {mobileNavItems.map(({ href, label, icon: Icon }) => {

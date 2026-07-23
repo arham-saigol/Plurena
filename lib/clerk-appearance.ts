@@ -4,14 +4,51 @@
  */
 export const clerkAppearance = {
   variables: {
-    colorBackground: "var(--card)",
-    colorText: "var(--foreground)",
-    colorTextSecondary: "var(--muted-foreground)",
     colorPrimary: "var(--cta)",
+    colorPrimaryForeground: "var(--cta-foreground)",
+    colorDanger: "var(--destructive)",
     colorNeutral: "var(--foreground)",
-    colorInputBackground: "var(--background)",
-    colorInputText: "var(--foreground)",
+    colorForeground: "var(--foreground)",
+    colorMuted: "var(--muted)",
+    colorMutedForeground: "var(--muted-foreground)",
+    colorBackground: "var(--card)",
+    colorInput: "var(--background)",
+    colorInputForeground: "var(--foreground)",
+    colorRing: "var(--ring)",
+    colorBorder: "var(--border)",
+    colorModalBackdrop: "rgba(0, 0, 0, 0.72)",
     // Keep in sync with --radius in app/globals.css; Clerk needs a literal here.
     borderRadius: "0.625rem",
+  },
+  elements: {
+    cardBox: {
+      backgroundColor: "var(--card)",
+      border: "1px solid var(--border)",
+      boxShadow: "var(--shadow-lift)",
+      overflow: "hidden",
+    },
+    card: {
+      backgroundColor: "var(--card)",
+    },
+    navbar: {
+      backgroundColor: "var(--background)",
+      borderColor: "var(--border)",
+    },
+    navbarButton: {
+      color: "var(--muted-foreground)",
+    },
+    navbarButton__active: {
+      backgroundColor: "var(--green-soft)",
+      color: "var(--green)",
+    },
+    pageScrollBox: {
+      backgroundColor: "var(--card)",
+    },
+    profileSection: {
+      borderColor: "var(--border)",
+    },
+    profileSectionPrimaryButton: {
+      color: "var(--green)",
+    },
   },
 };
