@@ -31,7 +31,6 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCredits } from "@/lib/utils";
 
-type ModelKey = Doc<"tests">["respondentModel"];
 type OptionType = Doc<"tests">["optionType"];
 type RespondentCount = Doc<"tests">["respondentCount"];
 
@@ -47,7 +46,6 @@ type WizardOption = {
 
 type Configuration = {
   respondentCounts: ReadonlyArray<RespondentCount>;
-  models: Array<{ key: ModelKey; label: string; vision: boolean }>;
 };
 
 type DraftDetails = {
@@ -167,9 +165,6 @@ function TestWizardForm({
   const [respondentCount, setRespondentCount] = useState<RespondentCount>(
     draft?.test.respondentCount ?? 20,
   );
-  const [respondentModel, setRespondentModel] = useState<ModelKey>(
-    draft?.test.respondentModel ?? "deepseek_v4_flash",
-  );
   const [saving, setSaving] = useState(false);
   const previewUrls = useRef(new Set<string>());
   const assetIds = useRef(
@@ -207,9 +202,6 @@ function TestWizardForm({
   }
 
   const creditCost = respondentCount;
-  const eligibleModels = configuration?.models.filter(
-    (model) => optionType === "text" || model.vision,
-  );
   const optionsComplete =
     options.length >= 2 &&
     options.every((option) =>
@@ -223,14 +215,6 @@ function TestWizardForm({
 
   function setType(nextType: OptionType) {
     if (nextType === optionType) return;
-    const selected = configuration.models.find(
-      (model) => model.key === respondentModel,
-    );
-    if (nextType === "image" && selected && !selected.vision) {
-      setRespondentModel(
-        configuration.models.find((model) => model.vision)?.key ?? "minimax_m3",
-      );
-    }
     for (const option of options) {
       revokePreviewUrl(option.previewUrl);
       releaseUpload(option.assetId);
@@ -336,7 +320,6 @@ function TestWizardForm({
         audience,
         context: context.trim() || undefined,
         respondentCount,
-        respondentModel,
         options: options.map((option) =>
           optionType === "text"
             ? { kind: "text" as const, label: option.label, text: option.text }
@@ -766,7 +749,7 @@ function TestWizardForm({
                     balance once.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <Field label="Respondents">
                     <Select
                       value={respondentCount}
@@ -779,21 +762,6 @@ function TestWizardForm({
                       {configuration.respondentCounts.map((count) => (
                         <option key={count} value={count}>
                           {count} respondents — {formatCredits(count)}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label="Respondent model">
-                    <Select
-                      value={respondentModel}
-                      onChange={(event) =>
-                        setRespondentModel(event.target.value as ModelKey)
-                      }
-                    >
-                      {eligibleModels?.map((model) => (
-                        <option key={model.key} value={model.key}>
-                          {model.label}
-                          {model.vision ? " · vision" : ""}
                         </option>
                       ))}
                     </Select>
@@ -851,7 +819,8 @@ function TestWizardForm({
                 <div className="bg-muted text-muted-foreground flex items-start gap-2 rounded-lg p-3 text-xs leading-5">
                   <Check className="mt-0.5 size-4 shrink-0 text-[var(--green)]" />{" "}
                   Credit cost, respondent count, question, options, audience,
-                  context, and model routing are frozen when execution starts.
+                  context, and panel allocation are frozen when execution
+                  starts.
                 </div>
               </div>
             )}

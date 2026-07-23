@@ -67,4 +67,4 @@
 - Primary: Vercel AI Gateway (`poolside/laguna-s-2.1-free`)
 - Fallback: Vercel AI Gateway (`poolside/laguna-s-2.1`)
 
-If both routes for a model fail, routing continues through other eligible models. Image comparisons only use vision-capable models. OpenCode Go routes use the provider-specific OpenAI-compatible or Anthropic-compatible protocol configured in the application.
+Respondent runs are balanced across every eligible model. Image comparisons only use vision-capable models; text comparisons use the full catalog. Each run starts with its assigned model's primary and fallback routes, then continues through other eligible models. A retried run rotates to another eligible starting model. OpenCode Go routes use the provider-specific OpenAI-compatible or Anthropic-compatible protocol configured in the application.

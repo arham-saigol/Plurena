@@ -1,11 +1,8 @@
 "use client";
 
 import { UserProfile } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { Bot, Cloud, CreditCard, LockKeyhole } from "lucide-react";
-import { api } from "@/convex/_generated/api";
+import { Cloud, CreditCard, LockKeyhole } from "lucide-react";
 import { clerkAppearance } from "@/lib/clerk-appearance";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -13,64 +10,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export function SettingsPanel() {
-  const configuration = useQuery(api.tests.configuration);
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <StatusCard
           icon={Cloud}
           title="Data layer"
-          value="Convex Cloud"
+          value="Active"
           detail="Realtime, durable execution"
         />
         <StatusCard
           icon={LockKeyhole}
           title="Authentication"
-          value="Clerk"
+          value="Protected"
           detail="Protected workspace routes"
         />
         <StatusCard
           icon={CreditCard}
           title="Payments"
-          value="Creem"
+          value="Secure"
           detail="Webhook-verified credits"
         />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="size-4" /> Available respondent models
-          </CardTitle>
-          <CardDescription>
-            Model availability and vision support come from the server-owned
-            routing catalog.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {configuration === undefined ? (
-            <Skeleton className="h-20 w-full" />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {configuration.models.map((model) => (
-                <Badge
-                  key={model.key}
-                  className="h-7 gap-1.5 border bg-transparent"
-                >
-                  {model.label}
-                  {model.vision && (
-                    <span className="text-[var(--blue)]">Vision</span>
-                  )}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className="overflow-hidden">
         <CardHeader>

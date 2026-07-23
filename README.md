@@ -13,7 +13,7 @@ Synthetic research is presented as decision support, not a substitute for real c
 - One-credit-per-respondent test costs across every supported panel size
 - Immutable test snapshots and atomic, idempotent launch charging
 - Convex-managed persona batches, bounded respondent execution, leases, retry recovery, live progress, and hierarchical synthesis
-- All eleven models from `models.md`, with centralized vision-aware routing, primary/backup providers, timeouts, limited retries, and error classification
+- All eleven models from `models.md`, with balanced respondent allocation, centralized vision-aware routing, primary/backup providers, timeouts, limited retries, and error classification
 - Structured and server-validated personas, respondent decisions, synthesis groups, and final narratives
 - Deterministic rankings, vote percentages, confidence distributions, ties, and result-strength labels
 - Persisted structured and readable reports, individual response search/filtering, and persona detail views
@@ -25,7 +25,7 @@ Synthetic research is presented as decision support, not a substitute for real c
 
 The browser never receives provider, payment, or webhook credentials. Clerk authenticates the workspace and supplies a Convex JWT. Convex owns application data, storage, authorization, pricing, job state, scheduling, and financial transactions.
 
-Launching a draft performs one Convex transaction: authorize owner, validate options and the server-owned one-credit-per-respondent cost, verify credits, create an immutable snapshot, debit the cached credit balance, append the unique ledger charge, and enqueue the first persona batch. Persona generation uses GLM-5.2 in batches of 20. Once the exact requested panel exists, respondent runs execute with concurrency five. Each run has a lease, a unique persona, bounded retries, and a one-response-per-run index.
+Launching a draft performs one Convex transaction: authorize owner, validate options and the server-owned one-credit-per-respondent cost, verify credits, create an immutable snapshot, debit the cached credit balance, append the unique ledger charge, and enqueue the first persona batch. Persona generation uses GLM-5.2 in batches of 20. Once the exact requested panel exists, respondent runs are balanced across all eligible models and execute with concurrency five. Image runs are limited to vision-capable models. Each run has a lease, a unique persona, bounded retries with cross-model replacement, and a one-response-per-run index.
 
 Completed responses are grouped in batches of 25 for GLM-5.2 synthesis. The final action receives bounded group summaries plus exact deterministic aggregates. The final mutation persists both structured fields and a readable report. A two-minute cron reclaims expired leases.
 

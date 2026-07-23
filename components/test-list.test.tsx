@@ -22,7 +22,6 @@ const test = {
   optionType: "text",
   audience: "Marketers",
   respondentCount: 20,
-  respondentModel: "glm_5_2",
   status: "draft",
   dashboardBucket: "ignored",
   createdAt: 1,

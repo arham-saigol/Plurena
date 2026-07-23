@@ -199,10 +199,7 @@ export async function generateStructured<T>({
         errorClass: classified.classification,
         latencyMs: Date.now() - startedAt,
       });
-      if (
-        !classified.retryable &&
-        classified.classification !== "authentication"
-      ) {
+      if (classified.classification === "invalid_request") {
         throw new RoutedGenerationError(
           "The model request could not be completed",
           attempts,

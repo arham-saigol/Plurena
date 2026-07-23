@@ -6,9 +6,7 @@ import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { getTestCreditCost, RESPONDENT_COUNTS } from "./lib/credits";
-import { MODEL_CATALOG, MODEL_KEYS } from "./lib/models";
 import {
-  modelKeyValidator,
   optionInputValidator,
   optionTypeValidator,
   respondentCountValidator,
@@ -60,11 +58,6 @@ export const configuration = query({
     await requireUser(ctx);
     return {
       respondentCounts: RESPONDENT_COUNTS,
-      models: MODEL_KEYS.map((key) => ({
-        key,
-        label: MODEL_CATALOG[key].label,
-        vision: MODEL_CATALOG[key].vision,
-      })),
     };
   },
 });
@@ -78,7 +71,6 @@ export const saveDraft = mutation({
     audience: v.string(),
     context: v.optional(v.string()),
     respondentCount: respondentCountValidator,
-    respondentModel: modelKeyValidator,
     options: v.array(optionInputValidator),
   },
   handler: async (ctx, args) => {
@@ -93,12 +85,6 @@ export const saveDraft = mutation({
     const context = cleanOptional(args.context, 4_000);
     if (args.options.length < 2 || args.options.length > MAX_OPTIONS) {
       throw new Error(`Tests require between 2 and ${MAX_OPTIONS} options`);
-    }
-    if (
-      !MODEL_CATALOG[args.respondentModel].vision &&
-      args.optionType === "image"
-    ) {
-      throw new Error("Image tests require a vision-capable respondent model");
     }
     if (args.options.some((option) => option.kind !== args.optionType)) {
       throw new Error("Text and image options cannot be mixed");
@@ -119,7 +105,6 @@ export const saveDraft = mutation({
         audience,
         context,
         respondentCount: args.respondentCount,
-        respondentModel: args.respondentModel,
         updatedAt: now,
       });
       const existingProgress = await ctx.db
@@ -149,7 +134,6 @@ export const saveDraft = mutation({
         audience,
         context,
         respondentCount: args.respondentCount,
-        respondentModel: args.respondentModel,
         status: "draft",
         dashboardBucket: "ignored",
         createdAt: now,
@@ -249,7 +233,6 @@ export const launch = mutation({
       audience: test.audience,
       context: test.context,
       respondentCount: test.respondentCount,
-      respondentModel: test.respondentModel,
       personaModel: "glm_5_2",
       synthesisModel: "glm_5_2",
       chargedCredits: creditCost,
@@ -423,6 +406,14 @@ export const get = query({
       .query("synthesisReports")
       .withIndex("by_testId", (q) => q.eq("testId", test._id))
       .unique();
-    return { test, progress, options: optionsWithUrls, report };
+    if (!report) return { test, progress, options: optionsWithUrls, report };
+    const {
+      modelKey: internalModelKey,
+      provider: internalProvider,
+      ...publicReport
+    } = report;
+    void internalModelKey;
+    void internalProvider;
+    return { test, progress, options: optionsWithUrls, report: publicReport };
   },
 });
