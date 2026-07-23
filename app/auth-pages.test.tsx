@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import SignInPage from "./sign-in/[[...sign-in]]/page";
 import SignUpPage from "./sign-up/[[...sign-up]]/page";
@@ -9,16 +10,29 @@ import { AuthShell } from "@/components/auth-shell";
 import { ConfigurationRequired } from "@/components/configuration-required";
 import { GoogleAuthCard } from "@/components/google-auth-card";
 
+const { authenticateWithRedirect } = vi.hoisted(() => ({
+  authenticateWithRedirect: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
 vi.mock("@clerk/nextjs", () => ({
-  useAuth: () => ({ isLoaded: false, isSignedIn: false }),
-  useSignIn: () => ({ fetchStatus: "idle", signIn: {} }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: false }),
 }));
 
-afterEach(() => vi.unstubAllEnvs());
+vi.mock("@clerk/nextjs/legacy", () => ({
+  useSignIn: () => ({
+    isLoaded: true,
+    signIn: { authenticateWithRedirect },
+  }),
+}));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  authenticateWithRedirect.mockReset();
+});
 
 describe.each([
   ["sign-in", SignInPage],
@@ -69,4 +83,19 @@ it("uses direct sign-up and sign-in copy", () => {
   expect(signIn).toContain("Create a workspace");
   expect(signIn).toContain('href="/terms"');
   expect(signIn).toContain('href="/privacy"');
+});
+
+it("starts Google sign-in with the matching redirect callback flow", async () => {
+  authenticateWithRedirect.mockResolvedValue(undefined);
+  const screen = render(<GoogleAuthCard mode="sign-in" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+
+  await waitFor(() =>
+    expect(authenticateWithRedirect).toHaveBeenCalledWith({
+      strategy: "oauth_google",
+      redirectUrl: "/sso-callback",
+      redirectUrlComplete: "/app",
+    }),
+  );
 });
