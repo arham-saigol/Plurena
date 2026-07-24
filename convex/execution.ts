@@ -14,7 +14,6 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
 } from "./lib/validators";
-import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import {
   getRespondentModels,
   ROUTED_GENERATION_LEASE_MS,
@@ -97,7 +96,6 @@ async function terminallyFailPersonaBatch(
   });
   const test = await ctx.db.get("tests", batch.testId);
   if (test) {
-    await syncDashboardStatsForTest(ctx, test, "failed");
     await ctx.db.patch("tests", test._id, {
       status: "failed",
       completedAt: now,
@@ -389,7 +387,6 @@ export const completePersonaBatch = internalMutation({
         });
       }
     }
-    await syncDashboardStatsForTest(ctx, test, "running_respondents");
     await ctx.db.patch("tests", test._id, {
       status: "running_respondents",
       updatedAt: now,
@@ -506,7 +503,6 @@ export const dispatchRespondents = internalMutation({
       progress.completedRespondents + progress.failedRespondents >=
         progress.totalRespondents
     ) {
-      await syncDashboardStatsForTest(ctx, test, "synthesizing");
       await ctx.db.patch("tests", test._id, {
         status: "synthesizing",
         updatedAt: now,

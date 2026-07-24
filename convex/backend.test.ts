@@ -224,7 +224,6 @@ describe("authenticated financial invariants", () => {
           audience: "Test audience",
           respondentCount: 20,
           status: "completed",
-          dashboardBucket: "completed",
           createdAt: now,
           updatedAt: now,
           completedAt: now,
@@ -242,12 +241,6 @@ describe("authenticated financial invariants", () => {
           updatedAt: now,
         });
       }
-      const stats = await ctx.db.query("dashboardStats").first();
-      if (!stats) throw new Error("Expected dashboard stats");
-      await ctx.db.patch("dashboardStats", stats._id, {
-        completed: 151,
-        updatedAt: Date.now(),
-      });
     });
 
     const firstPage = await alice.query(api.tests.dashboard, {

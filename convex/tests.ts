@@ -4,7 +4,6 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
-import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { getTestCreditCost, RESPONDENT_COUNTS } from "./lib/credits";
 import {
   insertLedgerEntry,
@@ -140,7 +139,6 @@ export const saveDraft = mutation({
         context,
         respondentCount: args.respondentCount,
         status: "draft",
-        dashboardBucket: "ignored",
         createdAt: now,
         updatedAt: now,
       });
@@ -273,7 +271,6 @@ export const launch = mutation({
       testId: test._id,
       createdAt: now,
     });
-    await syncDashboardStatsForTest(ctx, test, "preparing_personas");
     await ctx.db.patch("tests", test._id, {
       status: "preparing_personas",
       snapshotId,

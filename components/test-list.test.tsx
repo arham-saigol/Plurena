@@ -23,7 +23,6 @@ const test = {
   audience: "Marketers",
   respondentCount: 20,
   status: "draft",
-  dashboardBucket: "ignored",
   createdAt: 1,
   updatedAt: 1,
   progress: null,

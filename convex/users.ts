@@ -42,12 +42,6 @@ export const syncCurrentUser = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("dashboardStats", {
-      ownerId: userId,
-      active: 0,
-      completed: 0,
-      updatedAt: now,
-    });
     await insertLedgerEntry(ctx, {
       ownerId: userId,
       type: "onboarding_bonus",
