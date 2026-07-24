@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { CREDIT_OPTIONS, getCreditOption } from "./lib/credits";
 import { requireUser } from "./lib/auth";
+import { insertLedgerEntry } from "./lib/ledger";
 import { creditOptionKeyValidator } from "./lib/validators";
 
 function validateRequestId(requestId: string) {
@@ -222,7 +223,7 @@ export const processCheckoutWebhook = internalMutation({
         creditBalance: resultingCreditBalance,
         updatedAt: now,
       });
-      await ctx.db.insert("ledgerEntries", {
+      await insertLedgerEntry(ctx, {
         ownerId: user._id,
         type: "credit_purchase",
         amountCredits: session.credits,
@@ -392,7 +393,7 @@ export const processPaymentReversal = internalMutation({
         updatedAt: now,
       });
     }
-    await ctx.db.insert("ledgerEntries", {
+    await insertLedgerEntry(ctx, {
       ownerId: user._id,
       type: isRefund ? "payment_refund" : "payment_dispute",
       amountCredits: -creditsToReverse,

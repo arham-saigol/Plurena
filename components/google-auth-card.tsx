@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth, useSignIn } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+// Clerk 7.5.20's signal-based SSO flow failed this callback path; keep the tested legacy API temporarily.
+import { useSignIn } from "@clerk/nextjs/legacy";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,7 @@ const copy = {
 export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useAuth();
-  const { signIn, fetchStatus } = useSignIn();
+  const { isLoaded: isSignInLoaded, signIn } = useSignIn();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const content = copy[mode];
@@ -46,19 +48,16 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
       router.replace("/app");
       return;
     }
+    if (!signIn) return;
 
     setError(undefined);
     setSubmitting(true);
     try {
-      const result = await signIn.sso({
+      await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: "/app",
-        redirectCallbackUrl: "/sso-callback",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/app",
       });
-      if (result.error) {
-        setError("Google sign-in could not be started. Please try again.");
-        setSubmitting(false);
-      }
     } catch {
       setError("Google sign-in could not be started. Please try again.");
       setSubmitting(false);
@@ -77,7 +76,7 @@ export function GoogleAuthCard({ mode }: { mode: keyof typeof copy }) {
     );
   }
 
-  const busy = !isLoaded || submitting || fetchStatus === "fetching";
+  const busy = !isLoaded || !isSignInLoaded || !signIn || submitting;
 
   return (
     <div className="bg-card rounded-2xl border p-6 shadow-[var(--shadow-sm)] sm:p-8">

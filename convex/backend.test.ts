@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
+import aggregateTest from "@convex-dev/aggregate/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
@@ -7,6 +8,12 @@ import { MODEL_KEYS } from "./lib/models";
 import schema from "./schema";
 
 const modules = import.meta.glob(["./**/*.*s", "!./**/*.test.ts"]);
+
+function createTest() {
+  const t = convexTest(schema, modules);
+  aggregateTest.register(t, "ledgerAggregate");
+  return t;
+}
 
 const aliceIdentity = {
   subject: "alice",
@@ -54,7 +61,7 @@ function personaFixtures() {
 }
 
 async function launchedTestAsAlice() {
-  const t = convexTest(schema, modules);
+  const t = createTest();
   const alice = t.withIdentity(aliceIdentity);
   await alice.mutation(api.users.syncCurrentUser, {});
   const testId = await alice.mutation(api.tests.saveDraft, draft);
@@ -64,7 +71,7 @@ async function launchedTestAsAlice() {
 
 describe("authenticated financial invariants", () => {
   it("keeps model routing out of public test configuration and details", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const testId = await alice.mutation(api.tests.saveDraft, draft);
@@ -111,7 +118,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("grants onboarding credit exactly once and isolates user data", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     const bob = t.withIdentity({
       subject: "bob",
@@ -137,7 +144,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("launches from an immutable snapshot and charges only once", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const testId = await alice.mutation(api.tests.saveDraft, draft);
@@ -150,14 +157,16 @@ describe("authenticated financial invariants", () => {
     const charges = entries.filter((entry) => entry.type === "test_charge");
     expect(charges).toHaveLength(1);
     expect(charges[0]?.amountCredits).toBe(-20);
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 1,
-      completed: 0,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 20, testsRun: 1 });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: Date.now() + 1 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 0 });
   });
 
   it("charges a 250-respondent test exactly 250 credits", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     await t.run(async (ctx) => {
@@ -182,7 +191,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("keeps draft progress in sync with respondent-count edits", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const testId = await alice.mutation(api.tests.saveDraft, draft);
@@ -199,7 +208,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("paginates test history without scanning it for dashboard counts", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     await t.run(async (ctx) => {
@@ -215,7 +224,6 @@ describe("authenticated financial invariants", () => {
           audience: "Test audience",
           respondentCount: 20,
           status: "completed",
-          dashboardBucket: "completed",
           createdAt: now,
           updatedAt: now,
           completedAt: now,
@@ -233,12 +241,6 @@ describe("authenticated financial invariants", () => {
           updatedAt: now,
         });
       }
-      const stats = await ctx.db.query("dashboardStats").first();
-      if (!stats) throw new Error("Expected dashboard stats");
-      await ctx.db.patch("dashboardStats", stats._id, {
-        completed: 151,
-        updatedAt: Date.now(),
-      });
     });
 
     const firstPage = await alice.query(api.tests.dashboard, {
@@ -263,14 +265,13 @@ describe("authenticated financial invariants", () => {
     expect(secondPage.isDone).toBe(false);
     expect(thirdPage.page).toHaveLength(51);
     expect(thirdPage.isDone).toBe(true);
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 0,
-      completed: 151,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 0 });
   });
 
   it("deletes draft image assets only after their last reference", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const { sharedStorageId, uniqueStorageId, sharedAssetId, uniqueAssetId } =
@@ -345,7 +346,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("reclaims expired and unfinalized uploads without expiring saved or active uploads", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const uploads = await t.run(async (ctx) => {
@@ -447,7 +448,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("resumes upload cleanup after its durable sweep watermark", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const { firstStorageId, firstCutoff } = await t.run(async (ctx) => {
       const storageId = await ctx.storage.store(
         new Blob(["first"], { type: "image/png" }),
@@ -488,7 +489,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("grants and reverses a fixed credit purchase exactly once", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const requestId = "checkout_request_123456";
@@ -675,7 +676,7 @@ describe("authenticated financial invariants", () => {
   });
 
   it("stores one response when respondent completion is delivered twice", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
     const alice = t.withIdentity(aliceIdentity);
     await alice.mutation(api.users.syncCurrentUser, {});
     const testId = await alice.mutation(api.tests.saveDraft, draft);
@@ -1029,10 +1030,9 @@ describe("lease recovery", () => {
     expect(state.batch?.status).toBe("failed");
     expect(state.test?.status).toBe("failed");
     expect(state.progress?.status).toBe("failed");
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 0,
-      completed: 0,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 1 });
     expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(
       (await alice.query(api.users.ledger, { limit: 10 })).filter(

@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import {
   confidenceValidator,
   creditOptionKeyValidator,
-  dashboardBucketValidator,
   errorClassValidator,
   familiarityValidator,
   ledgerTypeValidator,
@@ -40,7 +39,6 @@ export default defineSchema({
     context: v.optional(v.string()),
     respondentCount: respondentCountValidator,
     status: testStatusValidator,
-    dashboardBucket: dashboardBucketValidator,
     snapshotId: v.optional(v.id("testSnapshots")),
     creditCost: v.optional(v.number()),
     createdAt: v.number(),
@@ -48,13 +46,6 @@ export default defineSchema({
     launchedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
   }).index("by_ownerId_and_updatedAt", ["ownerId", "updatedAt"]),
-
-  dashboardStats: defineTable({
-    ownerId: v.id("users"),
-    active: v.number(),
-    completed: v.number(),
-    updatedAt: v.number(),
-  }).index("by_ownerId", ["ownerId"]),
 
   testProgress: defineTable({
     testId: v.id("tests"),

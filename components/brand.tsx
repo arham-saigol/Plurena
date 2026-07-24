@@ -18,27 +18,33 @@ export function Brand({
         className,
       )}
     >
-      <span
-        className="grid size-7 place-items-center rounded-lg bg-[var(--cta)] shadow-[0_4px_12px_-6px_var(--cta)]"
-        aria-hidden
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="size-4.5 fill-none stroke-[var(--cta-foreground)]"
-          strokeWidth="2"
-        >
-          <circle cx="5.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-          <circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none" />
-          <circle
-            cx="5.5"
-            cy="17.5"
-            r="1.5"
-            fill="currentColor"
-            stroke="none"
+      <span className="grid size-7 place-items-center" aria-hidden>
+        <svg viewBox="28 18 184 184" className="size-7">
+          <circle cx="48" cy="42" r="12" fill="#73C6A1" />
+          <circle cx="120" cy="42" r="12" fill="#73C6A1" />
+          <circle cx="192" cy="42" r="12" fill="#73C6A1" />
+          <path
+            d="M48 76v12c0 20 15 27 32 33 24 9 40 28 40 55"
+            fill="none"
+            stroke="#1D7A56"
+            strokeLinecap="round"
+            strokeWidth="16"
           />
-          <path d="M8.5 6.5h1c3 0 3.5 5.5 6.5 5.5h2.5" strokeLinecap="round" />
-          <path d="M8.5 12h10" strokeLinecap="round" />
-          <path d="M8.5 17.5h1c3 0 3.5-5.5 6.5-5.5" strokeLinecap="round" />
+          <path
+            d="M192 76v12c0 20-15 27-32 33-24 9-40 28-40 55"
+            fill="none"
+            stroke="#1D7A56"
+            strokeLinecap="round"
+            strokeWidth="16"
+          />
+          <path
+            d="M120 76v100"
+            fill="none"
+            stroke="#1D7A56"
+            strokeLinecap="round"
+            strokeWidth="16"
+          />
+          <path d="M120 160v24" fill="none" stroke="#1D7A56" strokeWidth="16" />
         </svg>
       </span>
       {!compact && <span className="text-[18px]">Plurena</span>}

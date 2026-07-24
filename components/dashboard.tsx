@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { ArrowRight, Coins, FlaskConical, Plus, Sparkles } from "lucide-react";
-import { useCallback } from "react";
+import { ArrowRight, Coins, FlaskConical, Plus } from "lucide-react";
+import { useCallback, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { TestList } from "@/components/test-list";
@@ -13,6 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCredits } from "@/lib/utils";
 
 export function Dashboard({ all = false }: { all?: boolean }) {
+  const [thirtyDaysAgo] = useState(
+    () => Date.now() - 30 * 24 * 60 * 60 * 1_000,
+  );
   const {
     results: tests,
     status,
@@ -23,7 +26,10 @@ export function Dashboard({ all = false }: { all?: boolean }) {
     { initialNumItems: all ? 50 : 8 },
   );
   const user = useQuery(api.users.current);
-  const summary = useQuery(api.tests.dashboardSummary, all ? "skip" : {});
+  const summary = useQuery(
+    api.tests.dashboardSummary,
+    all ? "skip" : { since: thirtyDaysAgo },
+  );
   const loadNextPage = useCallback(() => loadMore(50), [loadMore]);
 
   if (!user || status === "LoadingFirstPage") {
@@ -32,13 +38,12 @@ export function Dashboard({ all = false }: { all?: boolean }) {
 
   const firstName = user.name?.split(" ")[0];
   const visible = all ? tests : tests.slice(0, 8);
-  const active = summary?.active;
-  const completed = summary?.completed;
+  const creditsUsed = summary?.creditsUsed;
+  const testsRun = summary?.testsRun;
 
   return (
     <div className="space-y-8 sm:space-y-10">
       <PageHeader
-        eyebrow={all ? "Research library" : "Research workspace"}
         title={
           all
             ? "Tests"
@@ -71,17 +76,18 @@ export function Dashboard({ all = false }: { all?: boolean }) {
               href: "/app/billing",
             },
             {
-              label: "In progress",
-              value: active === undefined ? "…" : String(active),
-              hint: "Running or synthesizing",
-              icon: FlaskConical,
-              href: "/app/tests",
+              label: "Credits used",
+              value:
+                creditsUsed === undefined ? "…" : formatCredits(creditsUsed),
+              hint: "Last 30 days",
+              icon: Coins,
+              href: "/app/billing",
             },
             {
-              label: "Decisions ready",
-              value: completed === undefined ? "…" : String(completed),
-              hint: "Completed reports",
-              icon: Sparkles,
+              label: "Tests run",
+              value: testsRun === undefined ? "…" : String(testsRun),
+              hint: "Last 30 days",
+              icon: FlaskConical,
               href: "/app/tests",
             },
           ].map(({ label, value, hint, icon: Icon, href }) => (

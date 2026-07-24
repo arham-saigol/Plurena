@@ -14,12 +14,12 @@ import {
   providerAttemptStatusValidator,
   providerValidator,
 } from "./lib/validators";
-import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import {
   getRespondentModels,
   ROUTED_GENERATION_LEASE_MS,
   type ProviderErrorClass,
 } from "./lib/models";
+import { insertLedgerEntry } from "./lib/ledger";
 
 const PERSONA_BATCH_SIZE = 20;
 const RESPONDENT_CONCURRENCY = 5;
@@ -69,7 +69,7 @@ async function fullRefund(
     creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
-  await ctx.db.insert("ledgerEntries", {
+  await insertLedgerEntry(ctx, {
     ownerId: user._id,
     type: "test_refund",
     amountCredits: test.creditCost,
@@ -96,7 +96,6 @@ async function terminallyFailPersonaBatch(
   });
   const test = await ctx.db.get("tests", batch.testId);
   if (test) {
-    await syncDashboardStatsForTest(ctx, test, "failed");
     await ctx.db.patch("tests", test._id, {
       status: "failed",
       completedAt: now,
@@ -388,7 +387,6 @@ export const completePersonaBatch = internalMutation({
         });
       }
     }
-    await syncDashboardStatsForTest(ctx, test, "running_respondents");
     await ctx.db.patch("tests", test._id, {
       status: "running_respondents",
       updatedAt: now,
@@ -505,7 +503,6 @@ export const dispatchRespondents = internalMutation({
       progress.completedRespondents + progress.failedRespondents >=
         progress.totalRespondents
     ) {
-      await syncDashboardStatsForTest(ctx, test, "synthesizing");
       await ctx.db.patch("tests", test._id, {
         status: "synthesizing",
         updatedAt: now,

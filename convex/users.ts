@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
+import { insertLedgerEntry } from "./lib/ledger";
 
 const ONBOARDING_BONUS_CREDITS = 25;
 
@@ -41,13 +42,7 @@ export const syncCurrentUser = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("dashboardStats", {
-      ownerId: userId,
-      active: 0,
-      completed: 0,
-      updatedAt: now,
-    });
-    await ctx.db.insert("ledgerEntries", {
+    await insertLedgerEntry(ctx, {
       ownerId: userId,
       type: "onboarding_bonus",
       amountCredits: ONBOARDING_BONUS_CREDITS,

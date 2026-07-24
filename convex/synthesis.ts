@@ -10,7 +10,7 @@ import {
   aggregateResponses,
   calculateFailureCreditRefund,
 } from "./lib/aggregation";
-import { syncDashboardStatsForTest } from "./lib/dashboardStats";
+import { insertLedgerEntry } from "./lib/ledger";
 import { ROUTED_GENERATION_LEASE_MS } from "./lib/models";
 import { modelKeyValidator, providerValidator } from "./lib/validators";
 
@@ -62,7 +62,7 @@ async function applyRefund(
     creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
-  await ctx.db.insert("ledgerEntries", {
+  await insertLedgerEntry(ctx, {
     ownerId: user._id,
     type: "test_refund",
     amountCredits: refundedCredits,
@@ -213,7 +213,6 @@ export const start = internalMutation({
         test.creditCost ?? 0,
       );
       const now = Date.now();
-      await syncDashboardStatsForTest(ctx, test, "failed");
       await ctx.db.patch("tests", test._id, {
         status: "failed",
         completedAt: now,
@@ -567,7 +566,6 @@ export const finalize = internalMutation({
       leaseExpiresAt: undefined,
       updatedAt: now,
     });
-    await syncDashboardStatsForTest(ctx, test, finalStatus);
     await ctx.db.patch("tests", test._id, {
       status: finalStatus,
       completedAt: now,

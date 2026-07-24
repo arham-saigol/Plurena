@@ -4,8 +4,12 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireOwnedTest, requireUser } from "./lib/auth";
-import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { getTestCreditCost, RESPONDENT_COUNTS } from "./lib/credits";
+import {
+  insertLedgerEntry,
+  ledgerAggregate,
+  type LedgerNamespace,
+} from "./lib/ledger";
 import {
   optionInputValidator,
   optionTypeValidator,
@@ -135,7 +139,6 @@ export const saveDraft = mutation({
         context,
         respondentCount: args.respondentCount,
         status: "draft",
-        dashboardBucket: "ignored",
         createdAt: now,
         updatedAt: now,
       });
@@ -258,7 +261,7 @@ export const launch = mutation({
       creditBalance: resultingCreditBalance,
       updatedAt: now,
     });
-    await ctx.db.insert("ledgerEntries", {
+    await insertLedgerEntry(ctx, {
       ownerId: user._id,
       type: "test_charge",
       amountCredits: -creditCost,
@@ -268,7 +271,6 @@ export const launch = mutation({
       testId: test._id,
       createdAt: now,
     });
-    await syncDashboardStatsForTest(ctx, test, "preparing_personas");
     await ctx.db.patch("tests", test._id, {
       status: "preparing_personas",
       snapshotId,
@@ -361,16 +363,27 @@ export const dashboard = query({
 });
 
 export const dashboardSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { since: v.number() },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const stats = await ctx.db
-      .query("dashboardStats")
-      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
-      .unique();
+    const bounds = {
+      lower: { key: args.since, inclusive: true },
+    };
+    const chargeNamespace: LedgerNamespace = [user._id, "test_charge"];
+    const refundNamespace: LedgerNamespace = [user._id, "test_refund"];
+    const [testsRun, [charges, refunds]] = await Promise.all([
+      ledgerAggregate.count(ctx, {
+        namespace: chargeNamespace,
+        bounds,
+      }),
+      ledgerAggregate.sumBatch(ctx, [
+        { namespace: chargeNamespace, bounds },
+        { namespace: refundNamespace, bounds },
+      ]),
+    ]);
     return {
-      active: stats?.active ?? 0,
-      completed: stats?.completed ?? 0,
+      creditsUsed: Math.max(0, -(charges + refunds)),
+      testsRun,
     };
   },
 });
