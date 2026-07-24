@@ -539,7 +539,14 @@ function TestWizardForm({
                       >
                         <Icon className="size-5" />
                         <p className="mt-5 text-sm font-medium">{title}</p>
-                        <p className="text-muted-foreground mt-1 text-xs leading-5">
+                        <p
+                          className={cn(
+                            "mt-1 text-xs leading-5",
+                            optionType === type
+                              ? "text-[var(--cta-foreground)]"
+                              : "text-muted-foreground",
+                          )}
+                        >
                           {description}
                         </p>
                       </button>
