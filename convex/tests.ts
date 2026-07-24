@@ -361,16 +361,25 @@ export const dashboard = query({
 });
 
 export const dashboardSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { since: v.number() },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const stats = await ctx.db
-      .query("dashboardStats")
-      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
-      .unique();
+    const entries = await ctx.db
+      .query("ledgerEntries")
+      .withIndex("by_ownerId_and_createdAt", (q) =>
+        q.eq("ownerId", user._id).gte("createdAt", args.since),
+      )
+      .collect();
+    const testEntries = entries.filter(
+      (entry) => entry.type === "test_charge" || entry.type === "test_refund",
+    );
     return {
-      active: stats?.active ?? 0,
-      completed: stats?.completed ?? 0,
+      creditsUsed: Math.max(
+        0,
+        -testEntries.reduce((total, entry) => total + entry.amountCredits, 0),
+      ),
+      testsRun: testEntries.filter((entry) => entry.type === "test_charge")
+        .length,
     };
   },
 });

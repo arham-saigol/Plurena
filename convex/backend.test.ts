@@ -150,10 +150,12 @@ describe("authenticated financial invariants", () => {
     const charges = entries.filter((entry) => entry.type === "test_charge");
     expect(charges).toHaveLength(1);
     expect(charges[0]?.amountCredits).toBe(-20);
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 1,
-      completed: 0,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 20, testsRun: 1 });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: Date.now() + 1 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 0 });
   });
 
   it("charges a 250-respondent test exactly 250 credits", async () => {
@@ -263,10 +265,9 @@ describe("authenticated financial invariants", () => {
     expect(secondPage.isDone).toBe(false);
     expect(thirdPage.page).toHaveLength(51);
     expect(thirdPage.isDone).toBe(true);
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 0,
-      completed: 151,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 0 });
   });
 
   it("deletes draft image assets only after their last reference", async () => {
@@ -1029,10 +1030,9 @@ describe("lease recovery", () => {
     expect(state.batch?.status).toBe("failed");
     expect(state.test?.status).toBe("failed");
     expect(state.progress?.status).toBe("failed");
-    await expect(alice.query(api.tests.dashboardSummary, {})).resolves.toEqual({
-      active: 0,
-      completed: 0,
-    });
+    await expect(
+      alice.query(api.tests.dashboardSummary, { since: 0 }),
+    ).resolves.toEqual({ creditsUsed: 0, testsRun: 1 });
     expect((await alice.query(api.users.current)).creditBalance).toBe(25);
     expect(
       (await alice.query(api.users.ledger, { limit: 10 })).filter(
