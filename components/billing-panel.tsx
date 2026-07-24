@@ -55,23 +55,40 @@ export function BillingPanel() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[0.75fr_1.65fr]">
-        <Card className="overflow-hidden border-[var(--green)]/20 bg-[linear-gradient(145deg,var(--green-soft),transparent_68%)]">
-          <CardHeader>
-            <CardDescription>Available credits</CardDescription>
-            <CardTitle className="text-4xl tabular-nums">
+        <Card className="relative flex flex-col overflow-hidden border-[var(--green)]/30 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--green)]">
+          <CardHeader className="flex flex-row items-center gap-3 pb-5">
+            <div className="grid size-10 place-items-center rounded-full bg-[var(--green-soft)] text-[var(--green)]">
+              <CreditCard className="size-5" />
+            </div>
+            <div>
+              <CardDescription className="mt-0">
+                Current balance
+              </CardDescription>
+              <p className="text-xs font-medium text-[var(--green)]">
+                Ready to use
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col">
+            <CardTitle className="flex items-baseline gap-2 tabular-nums">
               {user ? (
-                formatCredits(user.creditBalance)
+                <>
+                  <span className="text-6xl tracking-[-0.06em]">
+                    {new Intl.NumberFormat("en-US").format(user.creditBalance)}
+                  </span>
+                  <span className="text-muted-foreground text-base font-medium tracking-normal">
+                    credits
+                  </span>
+                </>
               ) : (
-                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-14 w-40" />
               )}
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground max-w-sm text-sm leading-6">
+            <p className="text-muted-foreground mt-7 max-w-sm text-sm leading-6">
               One credit runs one respondent. Tests are charged once at launch,
               and failed respondent work is automatically refunded.
             </p>
-            <div className="text-muted-foreground flex items-center gap-2 text-xs">
+            <div className="text-muted-foreground mt-auto flex items-center gap-2 border-t pt-4 text-xs">
               <ShieldCheck className="size-4 text-[var(--green)]" /> Payments
               are processed securely by our payment processor.
             </div>
@@ -104,11 +121,9 @@ export function BillingPanel() {
                       aria-pressed={selected}
                       onClick={() => setSelectedOptionKey(option.key)}
                       className={cn(
-                        "hover:border-foreground/30 relative rounded-lg border p-4 text-left transition",
-                        highestBonus &&
-                          "border-[var(--green)]/25 bg-[var(--green-soft)]/60",
+                        "hover:border-foreground/30 relative min-h-28 rounded-lg border p-4 text-left transition-colors",
                         selected &&
-                          "border-[var(--cta)] ring-2 ring-[var(--cta)]/20",
+                          "border-[var(--cta)] bg-[var(--cta)] text-[var(--cta-foreground)] shadow-[var(--shadow-sm)] hover:border-[var(--cta)]",
                       )}
                     >
                       <p className="text-xl font-semibold tabular-nums">
@@ -118,8 +133,12 @@ export function BillingPanel() {
                         {formatCredits(option.credits)}
                       </p>
                       <Badge
-                        tone={highestBonus ? "blue" : "neutral"}
-                        className="mt-3"
+                        tone={highestBonus ? "green" : "neutral"}
+                        className={cn(
+                          "mt-3",
+                          selected &&
+                            "bg-white/15 text-white ring-1 ring-white/15",
+                        )}
                       >
                         {option.bonusPercent > 0 ? "+" : ""}
                         {option.bonusPercent}% bonus

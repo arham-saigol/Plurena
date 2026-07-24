@@ -44,7 +44,6 @@ export function Dashboard({ all = false }: { all?: boolean }) {
   return (
     <div className="space-y-8 sm:space-y-10">
       <PageHeader
-        eyebrow={all ? "Research library" : undefined}
         title={
           all
             ? "Tests"
