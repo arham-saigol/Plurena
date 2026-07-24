@@ -7,6 +7,11 @@ import { requireOwnedTest, requireUser } from "./lib/auth";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
 import { getTestCreditCost, RESPONDENT_COUNTS } from "./lib/credits";
 import {
+  insertLedgerEntry,
+  ledgerAggregate,
+  type LedgerNamespace,
+} from "./lib/ledger";
+import {
   optionInputValidator,
   optionTypeValidator,
   respondentCountValidator,
@@ -258,7 +263,7 @@ export const launch = mutation({
       creditBalance: resultingCreditBalance,
       updatedAt: now,
     });
-    await ctx.db.insert("ledgerEntries", {
+    await insertLedgerEntry(ctx, {
       ownerId: user._id,
       type: "test_charge",
       amountCredits: -creditCost,
@@ -364,22 +369,24 @@ export const dashboardSummary = query({
   args: { since: v.number() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const entries = await ctx.db
-      .query("ledgerEntries")
-      .withIndex("by_ownerId_and_createdAt", (q) =>
-        q.eq("ownerId", user._id).gte("createdAt", args.since),
-      )
-      .collect();
-    const testEntries = entries.filter(
-      (entry) => entry.type === "test_charge" || entry.type === "test_refund",
-    );
+    const bounds = {
+      lower: { key: args.since, inclusive: true },
+    };
+    const chargeNamespace: LedgerNamespace = [user._id, "test_charge"];
+    const refundNamespace: LedgerNamespace = [user._id, "test_refund"];
+    const [testsRun, [charges, refunds]] = await Promise.all([
+      ledgerAggregate.count(ctx, {
+        namespace: chargeNamespace,
+        bounds,
+      }),
+      ledgerAggregate.sumBatch(ctx, [
+        { namespace: chargeNamespace, bounds },
+        { namespace: refundNamespace, bounds },
+      ]),
+    ]);
     return {
-      creditsUsed: Math.max(
-        0,
-        -testEntries.reduce((total, entry) => total + entry.amountCredits, 0),
-      ),
-      testsRun: testEntries.filter((entry) => entry.type === "test_charge")
-        .length,
+      creditsUsed: Math.max(0, -(charges + refunds)),
+      testsRun,
     };
   },
 });

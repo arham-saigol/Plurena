@@ -11,6 +11,7 @@ import {
   calculateFailureCreditRefund,
 } from "./lib/aggregation";
 import { syncDashboardStatsForTest } from "./lib/dashboardStats";
+import { insertLedgerEntry } from "./lib/ledger";
 import { ROUTED_GENERATION_LEASE_MS } from "./lib/models";
 import { modelKeyValidator, providerValidator } from "./lib/validators";
 
@@ -62,7 +63,7 @@ async function applyRefund(
     creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
-  await ctx.db.insert("ledgerEntries", {
+  await insertLedgerEntry(ctx, {
     ownerId: user._id,
     type: "test_refund",
     amountCredits: refundedCredits,

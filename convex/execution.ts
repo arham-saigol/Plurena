@@ -20,6 +20,7 @@ import {
   ROUTED_GENERATION_LEASE_MS,
   type ProviderErrorClass,
 } from "./lib/models";
+import { insertLedgerEntry } from "./lib/ledger";
 
 const PERSONA_BATCH_SIZE = 20;
 const RESPONDENT_CONCURRENCY = 5;
@@ -69,7 +70,7 @@ async function fullRefund(
     creditBalance: resultingCreditBalance,
     updatedAt: Date.now(),
   });
-  await ctx.db.insert("ledgerEntries", {
+  await insertLedgerEntry(ctx, {
     ownerId: user._id,
     type: "test_refund",
     amountCredits: test.creditCost,

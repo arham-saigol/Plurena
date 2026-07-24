@@ -1,7 +1,8 @@
+import aggregate from "@convex-dev/aggregate/convex.config.js";
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 
-export default defineApp({
+const app = defineApp({
   env: {
     AI_GATEWAY_API_KEY: v.optional(v.string()),
     OPENCODE_GO_API_KEY: v.optional(v.string()),
@@ -18,3 +19,7 @@ export default defineApp({
     APP_URL: v.optional(v.string()),
   },
 });
+
+app.use(aggregate, { name: "ledgerAggregate" });
+
+export default app;
