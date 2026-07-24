@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+// Clerk 7.5.20's signal-based SSO flow failed this callback path; keep the tested legacy API temporarily.
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
