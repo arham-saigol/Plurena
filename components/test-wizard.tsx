@@ -27,7 +27,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
+import { Field, Input, Textarea } from "@/components/ui/form-controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCredits } from "@/lib/utils";
 
@@ -202,6 +202,10 @@ function TestWizardForm({
   }
 
   const creditCost = respondentCount;
+  const respondentIndex =
+    configuration.respondentCounts.indexOf(respondentCount);
+  const respondentProgress =
+    (respondentIndex / (configuration.respondentCounts.length - 1)) * 100;
   const optionsComplete =
     options.length >= 2 &&
     options.every((option) =>
@@ -363,7 +367,7 @@ function TestWizardForm({
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <PageHeader
-        eyebrow={testId ? "Saved draft" : "New test"}
+        eyebrow={testId ? "Saved draft" : undefined}
         title={testId ? "Continue the decision" : "What do you need to decide?"}
         description="Keep the question focused. Plurena will make the audience varied, not the brief vague."
         actions={
@@ -524,11 +528,13 @@ function TestWizardForm({
                     ].map(({ type, icon: Icon, title, description }) => (
                       <button
                         key={type}
+                        type="button"
+                        aria-pressed={optionType === type}
                         onClick={() => setType(type)}
                         className={cn(
-                          "hover:bg-accent/50 rounded-lg border p-4 text-left transition",
+                          "hover:border-foreground/30 rounded-lg border p-4 text-left transition-colors",
                           optionType === type &&
-                            "border-[var(--cta)] ring-2 ring-[var(--cta)]/20",
+                            "border-[var(--cta)] bg-[var(--cta)] text-[var(--cta-foreground)] shadow-[var(--shadow-sm)] hover:border-[var(--cta)]",
                         )}
                       >
                         <Icon className="size-5" />
@@ -749,23 +755,83 @@ function TestWizardForm({
                     balance once.
                   </p>
                 </div>
-                <div className="grid gap-4">
-                  <Field label="Respondents">
-                    <Select
-                      value={respondentCount}
-                      onChange={(event) =>
-                        setRespondentCount(
-                          Number(event.target.value) as RespondentCount,
-                        )
-                      }
-                    >
-                      {configuration.respondentCounts.map((count) => (
-                        <option key={count} value={count}>
-                          {count} respondents — {formatCredits(count)}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
+                <div className="rounded-lg border p-4 sm:p-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground text-xs font-medium">
+                        Respondents
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tabular-nums">
+                        {respondentCount}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-muted-foreground text-xs font-medium">
+                        Credit usage
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tabular-nums">
+                        {formatCredits(creditCost)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="focus-within:ring-ring/30 relative mt-5 rounded-md focus-within:ring-2">
+                    <div className="relative h-7" aria-hidden="true">
+                      <div
+                        className="absolute inset-x-2 top-3 h-1 rounded-full"
+                        style={{
+                          background: `linear-gradient(to right, var(--cta) ${respondentProgress}%, var(--border) ${respondentProgress}%)`,
+                        }}
+                      />
+                      <div className="absolute inset-x-0 top-1 flex justify-between">
+                        {configuration.respondentCounts.map((count) => (
+                          <span
+                            key={count}
+                            className="grid size-5 place-items-center"
+                          >
+                            <span
+                              className={cn(
+                                "bg-border size-2 rounded-full transition-all",
+                                count <= respondentCount && "bg-[var(--cta)]",
+                                count === respondentCount &&
+                                  "bg-background size-4 border-4 border-[var(--cta)] shadow-[var(--shadow-sm)]",
+                              )}
+                            />
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <input
+                      className="absolute inset-0 z-10 h-7 w-full cursor-pointer opacity-0"
+                      type="range"
+                      min={0}
+                      max={configuration.respondentCounts.length - 1}
+                      step={1}
+                      value={respondentIndex}
+                      aria-label="Respondent count"
+                      aria-valuetext={`${respondentCount} respondents, ${formatCredits(creditCost)}`}
+                      onChange={(event) => {
+                        const count =
+                          configuration.respondentCounts[
+                            Number(event.target.value)
+                          ];
+                        if (count !== undefined) setRespondentCount(count);
+                      }}
+                    />
+                  </div>
+                  <div className="mt-1 grid grid-cols-7" aria-hidden="true">
+                    {configuration.respondentCounts.map((count) => (
+                      <span
+                        key={count}
+                        className={cn(
+                          "text-muted-foreground text-center text-[10px] tabular-nums sm:text-xs",
+                          count === respondentCount &&
+                            "text-foreground font-semibold",
+                        )}
+                      >
+                        {count}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="divide-y rounded-lg border">
                   {[
